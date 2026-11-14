@@ -4,6 +4,8 @@
 #include <Arduino.h>
 #include "config.h"
 
+// Счётчик импульсов трубки -> оценка CPM за минуту -> пересчёт в мощность дозы.
+
 /**
  * @class GeigerCounter
  * @brief Hardware interrupt-driven Geiger-Mueller dosimetry engine for J305 tube.

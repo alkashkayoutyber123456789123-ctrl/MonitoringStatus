@@ -9,6 +9,9 @@
 #include <math.h>
 #include "config.h"
 
+// MAX30102 оценивает пульс и SpO2; BMP280 измеряет давление воздуха.
+// Артериальное давление эти датчики не измеряют.
+
 /**
  * @class HealthMonitor
  * @brief Wrist-worn biometric and barometric environmental monitor for astronauts.

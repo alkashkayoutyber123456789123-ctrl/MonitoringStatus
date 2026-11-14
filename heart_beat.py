@@ -1,14 +1,20 @@
-import random #Import for Simulation of Heart Beating
-import time #Import this for Better Simulation, idk, just for timing 
+"""Print a simple random heart-rate demo once per second."""
 
-def get_heart_rate(): #The Heart Rate Point
-    return random.randint(68, 82) #The Simulation
+import random
+import time
 
-try:
-    while True: #While it means, that process is going all the time
-        bpm = get_heart_rate() 
-        print(f"HeartRate: {bpm} bpm", flush=True)#Import the Heart Beat on a Terminal
-        time.sleep(1) #Timing
 
-except KeyboardInterrupt: #CTRL + C for the OFF (if programm is running in Terminal VSCode for test)
-    print("\nProgramm is OFF.") #Import on a VSCode Terminal
+def main():
+    # Это случайное число для демонстрации, настоящий датчик не используется.
+    try:
+        while True:
+            bpm = random.randint(68, 82)
+            print(f"Heart rate: {bpm} BPM", flush=True)
+            time.sleep(1)
+    except KeyboardInterrupt:
+        print("\nDemo stopped.")
+
+
+# Запускаем цикл только если файл вызвали напрямую, а не импортировали.
+if __name__ == "__main__":
+    main()

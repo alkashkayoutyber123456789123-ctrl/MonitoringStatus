@@ -1,3 +1,4 @@
+# Packages for the web dashboard, NASA API, and ESP32 USB serial link.
 requests>=2.31.0
 fastapi>=0.110.0
 uvicorn>=0.28.0

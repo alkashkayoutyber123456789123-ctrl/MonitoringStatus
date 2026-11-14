@@ -6,6 +6,8 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 #include "config.h"
+
+// Экран только показывает данные; измерениями занимаются классы датчиков.
 #include "geiger_counter.h"
 #include "biodosimetry_health.h"
 

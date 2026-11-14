@@ -154,6 +154,17 @@ AstroHealth-Telemetry/
     └── main.cpp                    # NVS persistence, UART JSON bridge & 1 Hz telemetry
 ```
 
+### Where to look in the code
+
+- `app.py` — runs the dashboard server and updates the simulated readings.
+- `templates/index.html` — draws the web page and asks `app.py` for new readings.
+- `nasa_uplink/nasa_donki_serial.py` — downloads NASA space-weather data and can send it to an ESP32.
+- `src/main.cpp` — starts the real ESP32 and repeats its main update loop.
+- `src/geiger_counter.h` — counts Geiger pulses and calculates radiation dose.
+- `src/biodosimetry_health.h` — reads MAX30102 and BMP280 sensors. It does not measure blood pressure.
+- `src/wrist_display_ui.h` — draws readings on the small OLED screen.
+- `src/config.h` — contains GPIO numbers and thresholds.
+
 ### Option A: Running the Interactive Web Application (Primary Software Submission)
 ```bash
 # 1. Install dependencies

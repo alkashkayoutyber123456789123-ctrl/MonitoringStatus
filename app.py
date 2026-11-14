@@ -14,8 +14,6 @@ Features:
 
 import asyncio
 import datetime as dt
-import json
-import math
 import os
 import random
 import sqlite3
@@ -34,10 +32,8 @@ from pydantic import BaseModel
 BASE_DIR = Path(__file__).resolve().parent
 DB_PATH = BASE_DIR / "nasa_uplink" / "nasa_donki_events.db"
 TEMPLATES_DIR = BASE_DIR / "templates"
-STATIC_DIR = BASE_DIR / "static"
 
 TEMPLATES_DIR.mkdir(exist_ok=True)
-STATIC_DIR.mkdir(exist_ok=True)
 
 app = FastAPI(
     title="AstroWrist 3D Spaceflight Station",
@@ -61,9 +57,50 @@ RAD_CRIT_MODULE_USVH = 100.0
 RAD_WARN_EVA_USVH = 8.0
 RAD_CRIT_EVA_USVH = 50.0
 
+# Все готовые сценарии собраны здесь, чтобы не повторять одинаковые присваивания.
+# Давление в таблице придумано для демонстрации — датчика манжеты нет.
+SCENARIOS = {
+    "nominal": {
+        "ambient_pressure_hpa": 1013.25, "operating_mode": "MODULE",
+        "donki_sep_storm": False, "donki_solar_flux_pfu": 1.4,
+        "raw_cpm": 20.0, "heart_rate_bpm": 72.0,
+        "systolic_bp_mmhg": 118.0, "diastolic_bp_mmhg": 76.0,
+        "spo2_percent": 98.6, "log": "NOMINAL ISS HABITAT",
+    },
+    "eva_spacewalk": {
+        "ambient_pressure_hpa": 296.0, "operating_mode": "EVA",
+        "donki_sep_storm": False, "donki_solar_flux_pfu": 3.8,
+        "raw_cpm": 55.0, "heart_rate_bpm": 95.0,
+        "systolic_bp_mmhg": 126.0, "diastolic_bp_mmhg": 82.0,
+        "spo2_percent": 97.4, "log": "EVA SPACEWALK",
+    },
+    "exertion_tachycardia": {
+        "ambient_pressure_hpa": 296.0, "operating_mode": "EVA",
+        "donki_sep_storm": False, "donki_solar_flux_pfu": 4.2,
+        "raw_cpm": 75.0, "heart_rate_bpm": 145.0,
+        "systolic_bp_mmhg": 155.0, "diastolic_bp_mmhg": 98.0,
+        "spo2_percent": 94.0, "log": "EXERTION TACHYCARDIA",
+    },
+    "solar_proton_storm": {
+        "ambient_pressure_hpa": 1013.25, "operating_mode": "MODULE",
+        "donki_sep_storm": True, "donki_solar_flux_pfu": 28.5,
+        "donki_kp_index": 8.3, "donki_flare_class": "X9.0",
+        "raw_cpm": 2500.0, "heart_rate_bpm": 105.0,
+        "systolic_bp_mmhg": 135.0, "diastolic_bp_mmhg": 86.0,
+        "spo2_percent": 98.0, "log": "NASA DONKI SOLAR STORM",
+    },
+    "critical_abort": {
+        "ambient_pressure_hpa": 296.0, "operating_mode": "EVA",
+        "donki_sep_storm": True, "donki_solar_flux_pfu": 64.0,
+        "raw_cpm": 8800.0, "heart_rate_bpm": 158.0,
+        "systolic_bp_mmhg": 172.0, "diastolic_bp_mmhg": 106.0,
+        "spo2_percent": 89.0, "log": "CRITICAL EVA ABORT",
+    },
+}
+
 
 class AstroWristState:
-    """State engine managing vitals, radiation, blood pressure, and device simulation."""
+    """Текущие показания и настройки программной модели устройства."""
 
     def __init__(self):
         self.scenario = "nominal"
@@ -132,86 +169,46 @@ class AstroWristState:
         self.serial_logs.append(f"[{now_str}] {text}")
 
     def adjust_vital(self, vital: str, delta: float):
-        """Allows direct micro-adjustments via UI +/- buttons."""
-        if vital == "bpm":
-            self.heart_rate_bpm = max(35.0, min(220.0, self.heart_rate_bpm + delta))
-            self.add_log(f"USER-ADJUST: Heart Rate -> {round(self.heart_rate_bpm, 1)} BPM")
-        elif vital == "radiation":
-            # Adjust raw CPM
-            self.raw_cpm = max(5.0, min(25000.0, self.raw_cpm + delta))
-            self.add_log(f"USER-ADJUST: Radiation Raw CPM -> {round(self.raw_cpm, 1)}")
-        elif vital == "bp_sys":
-            self.systolic_bp_mmhg = max(70.0, min(220.0, self.systolic_bp_mmhg + delta))
-            self.mean_arterial_pressure = self.diastolic_bp_mmhg + (self.systolic_bp_mmhg - self.diastolic_bp_mmhg) / 3.0
-            self.add_log(f"USER-ADJUST: Blood Pressure -> {round(self.systolic_bp_mmhg, 1)}/{round(self.diastolic_bp_mmhg, 1)} mmHg")
-        elif vital == "bp_dia":
-            self.diastolic_bp_mmhg = max(40.0, min(140.0, self.diastolic_bp_mmhg + delta))
-            self.mean_arterial_pressure = self.diastolic_bp_mmhg + (self.systolic_bp_mmhg - self.diastolic_bp_mmhg) / 3.0
-            self.add_log(f"USER-ADJUST: Blood Pressure -> {round(self.systolic_bp_mmhg, 1)}/{round(self.diastolic_bp_mmhg, 1)} mmHg")
+        """Меняет значение после нажатия кнопки + или -."""
+        # Для каждого параметра заданы имя поля и допустимые границы.
+        controls = {
+            "bpm": ("heart_rate_bpm", 35, 220),
+            "radiation": ("raw_cpm", 5, 25000),
+            "bp_sys": ("systolic_bp_mmhg", 70, 220),
+            "bp_dia": ("diastolic_bp_mmhg", 40, 140),
+        }
+        control = controls.get(vital)
+        if control is None:
+            return
+
+        field, minimum, maximum = control
+        value = getattr(self, field) + delta
+        setattr(self, field, max(minimum, min(maximum, value)))
+
+        # MAP (среднее давление) пересчитываем, когда изменились верхнее/нижнее значения.
+        if vital in ("bp_sys", "bp_dia"):
+            self.mean_arterial_pressure = self.diastolic_bp_mmhg + (
+                self.systolic_bp_mmhg - self.diastolic_bp_mmhg
+            ) / 3.0
+
+        self.add_log(f"Changed {vital}: {getattr(self, field):.1f}")
 
     def apply_scenario(self, name: str):
+        """Загружает готовый сценарий из таблицы SCENARIOS."""
+        settings = SCENARIOS.get(name)
+        if settings is None:
+            return
+
         self.scenario = name
-        if name == "nominal":
-            self.ambient_pressure_hpa = 1013.25
-            self.operating_mode = "MODULE"
-            self.donki_sep_storm = False
-            self.donki_solar_flux_pfu = 1.4
-            self.raw_cpm = 20.0
-            self.heart_rate_bpm = 72.0
-            self.systolic_bp_mmhg = 118.0
-            self.diastolic_bp_mmhg = 76.0
-            self.spo2_percent = 98.6
-            self.add_log("CMD: Scenario -> NOMINAL ISS HABITAT")
+        for field, value in settings.items():
+            if field != "log":
+                setattr(self, field, value)
 
-        elif name == "eva_spacewalk":
-            self.ambient_pressure_hpa = 296.0  # 4.3 psi NASA xEMU suit
-            self.operating_mode = "EVA"
-            self.donki_sep_storm = False
-            self.donki_solar_flux_pfu = 3.8
-            self.raw_cpm = 55.0
-            self.heart_rate_bpm = 95.0
-            self.systolic_bp_mmhg = 126.0
-            self.diastolic_bp_mmhg = 82.0
-            self.spo2_percent = 97.4
-            self.add_log("CMD: Scenario -> AIRLOCK DECOMPRESSION (<450 hPa) -> AUTO-EVA")
-
-        elif name == "exertion_tachycardia":
-            self.ambient_pressure_hpa = 296.0
-            self.operating_mode = "EVA"
-            self.donki_sep_storm = False
-            self.donki_solar_flux_pfu = 4.2
-            self.raw_cpm = 75.0
-            self.heart_rate_bpm = 145.0  # Tachycardia threshold >130 BPM
-            self.systolic_bp_mmhg = 155.0  # Exertion hypertension
-            self.diastolic_bp_mmhg = 98.0
-            self.spo2_percent = 94.0
-            self.add_log("CMD: Scenario -> EXERTION TACHYCARDIA (BPM > 130)")
-
-        elif name == "solar_proton_storm":
-            self.ambient_pressure_hpa = 1013.25
-            self.operating_mode = "MODULE"
-            self.donki_sep_storm = True
-            self.donki_solar_flux_pfu = 28.5
-            self.donki_kp_index = 8.3
-            self.donki_flare_class = "X9.0"
-            self.raw_cpm = 2500.0
-            self.heart_rate_bpm = 105.0
-            self.systolic_bp_mmhg = 135.0
-            self.diastolic_bp_mmhg = 86.0
-            self.spo2_percent = 98.0
-            self.add_log("CMD: Scenario -> NASA DONKI SEP PROTON STORM ALERT")
-
-        elif name == "critical_abort":
-            self.ambient_pressure_hpa = 296.0  # Unshielded EVA
-            self.operating_mode = "EVA"
-            self.donki_sep_storm = True
-            self.donki_solar_flux_pfu = 64.0
-            self.raw_cpm = 8800.0  # Critical radiation rate
-            self.heart_rate_bpm = 158.0  # Acute tachycardia under radiation
-            self.systolic_bp_mmhg = 172.0
-            self.diastolic_bp_mmhg = 106.0
-            self.spo2_percent = 89.0
-            self.add_log("CMD: Scenario -> CRITICAL ABORT: EVA RADIATION STORM")
+        # После загрузки сценария пересчитываем среднее давление.
+        self.mean_arterial_pressure = self.diastolic_bp_mmhg + (
+            self.systolic_bp_mmhg - self.diastolic_bp_mmhg
+        ) / 3.0
+        self.add_log(f"Scenario: {settings['log']}")
 
     def tick(self):
         self.met_seconds += 1
@@ -415,6 +412,7 @@ def sync_nasa_donki():
 
 
 async def background_loop():
+    # Раз в секунду обновляем симуляцию; датчики для этого не нужны.
     sync_nasa_donki()
     device_state.add_log("ESP32-WROOM-32D Online: 3D Hardware Telemetry Station Loaded")
     device_state.add_log("J305 Geiger Counter & MAX30102 PPG Optical Sensors Active")
@@ -456,11 +454,11 @@ async def adjust_vital(payload: AdjustPayload):
 
 @app.post("/api/scenario/{name}")
 async def switch_scenario(name: str):
-    valid = ["nominal", "eva_spacewalk", "exertion_tachycardia", "solar_proton_storm", "critical_abort"]
-    if name in valid:
-        device_state.apply_scenario(name)
-        return {"status": "success", "scenario": name}
-    return JSONResponse({"status": "error", "message": "Unknown scenario"}, status_code=400)
+    # The same SCENARIOS table drives both the menu validation and the preset values.
+    if name not in SCENARIOS:
+        return JSONResponse({"status": "error", "message": "Unknown scenario"}, status_code=400)
+    device_state.apply_scenario(name)
+    return {"status": "success", "scenario": name}
 
 
 @app.post("/api/reset_dose")

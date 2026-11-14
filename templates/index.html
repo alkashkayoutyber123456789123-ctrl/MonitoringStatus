@@ -618,6 +618,7 @@
 
     <!-- Three.js 3D Model Construction & Interactive Script -->
     <script>
+        // Скрипт рисует часы, получает данные из Python и отправляет обратно нажатия кнопок.
         let scene, camera, renderer, controls, watchGroup;
         let oledMesh, pulseSensorLedMesh, geigerCylinderMesh;
         let oledTexture, oledCanvas, oledCtx;
@@ -635,6 +636,7 @@
             accumMsv: 1.45
         };
 
+        // Один раз создаёт сцену Three.js, камеру и освещение.
         function init3D() {
             const container = document.querySelector('.viewport-3d-box');
             const canvas = document.getElementById('threeCanvas');
@@ -684,6 +686,7 @@
             animate();
         }
 
+        // Собирает 3D-часы из простых геометрических деталей.
         function buildWatchModel() {
             watchGroup = new THREE.Group();
 
@@ -840,6 +843,7 @@
         }
 
         // Render Dynamic 2D Canvas onto 3D Watch Screen
+        // Перерисовывает виртуальный OLED на часах по текущим показаниям.
         function updateOledTexture() {
             if (!oledCtx) return;
 
@@ -899,6 +903,7 @@
             renderer.setSize(container.clientWidth, container.clientHeight);
         }
 
+        // Крутит 3D-сцену и обновляет её кадр за кадром.
         function animate() {
             requestAnimationFrame(animate);
 
@@ -983,6 +988,7 @@
         drawEcg();
 
         // Telemetry Poller & Vitals Update
+        // Раз в секунду запрашивает новые показания у Python-сервера.
         async function fetchTelemetry() {
             try {
                 const res = await fetch('/api/telemetry');
@@ -1058,6 +1064,7 @@
         }
 
         // Direct Micro-adjustments (+ / - buttons)
+        // Передаёт серверу изменение, когда пользователь нажал + или -.
         async function adjustVital(vital, delta) {
             try {
                 await fetch('/api/adjust', {
@@ -1072,6 +1079,7 @@
         }
 
         // Scenarios
+        // Переключает демонстрационный сценарий по кнопке.
         async function setScenario(name, btnElement) {
             document.querySelectorAll('.scenario-pill').forEach(b => b.classList.remove('active'));
             if (btnElement) btnElement.classList.add('active');

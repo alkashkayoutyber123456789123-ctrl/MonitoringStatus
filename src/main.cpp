@@ -27,6 +27,8 @@
 #include "biodosimetry_health.h"
 #include "wrist_display_ui.h"
 
+// setup() запускается один раз. loop() ниже постоянно читает датчики и обновляет экран.
+
 // Global subsystem instances
 Preferences            g_nvsPrefs;
 GeigerCounter          g_geiger;

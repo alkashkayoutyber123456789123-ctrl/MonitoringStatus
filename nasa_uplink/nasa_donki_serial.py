@@ -20,19 +20,14 @@ import datetime as dt
 import json
 import os
 import sqlite3
-import ssl
 import sys
 import time
-import urllib.parse
-import urllib.request
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-try:
-    import requests
-    REQUESTS_AVAILABLE = True
-except ImportError:
-    REQUESTS_AVAILABLE = False
+import requests
+
+# Скрипт загружает события NASA, сохраняет их в SQLite и отправляет JSON в ESP32.
 
 try:
     import serial
@@ -59,6 +54,7 @@ def init_nasa_donki_database(db_path: Path = DB_PATH) -> sqlite3.Connection:
     conn = sqlite3.connect(str(db_path))
     cur = conn.cursor()
 
+    # Таблицы создаются только при первом запуске; старые записи сохраняются.
     cur.execute(
         """
         CREATE TABLE IF NOT EXISTS donki_sep_events (
@@ -163,39 +159,21 @@ def fetch_nasa_donki_endpoint(
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
-    """
-    Queries a live NASA DONKI REST endpoint (`SEP`, `GST`, `FLR`).
-    When `start_date`/`end_date` are omitted (or if the host system clock is skewed),
-    NASA DONKI automatically serves the latest 30 days of space weather telemetry.
-    """
+    """Download one list of events from a NASA DONKI endpoint."""
     params: Dict[str, str] = {"api_key": api_key}
     if start_date and end_date:
         params["startDate"] = start_date
         params["endDate"] = end_date
 
-    def _do_request(req_params: Dict[str, str]) -> List[Dict[str, Any]]:
-        if REQUESTS_AVAILABLE:
-            response = requests.get(url, params=req_params, timeout=10.0)
-            response.raise_for_status()
-            payload = response.json()
-            return payload if isinstance(payload, list) else []
+    response = requests.get(url, params=params, timeout=10)
+    # Если NASA не принимает даты, просим её стандартный список последних событий.
+    if response.status_code >= 400 and start_date and end_date:
+        response = requests.get(url, params={"api_key": api_key}, timeout=10)
+    response.raise_for_status()
 
-        query_string = urllib.parse.urlencode(req_params)
-        full_url = f"{url}?{query_string}"
-        ctx = ssl.create_default_context()
-        req = urllib.request.Request(full_url, headers={"User-Agent": "AstroWrist-NASA-DONKI-Bridge/1.0"})
-        with urllib.request.urlopen(req, timeout=10.0, context=ctx) as resp:
-            raw_body = resp.read().decode("utf-8")
-            payload = json.loads(raw_body)
-            return payload if isinstance(payload, list) else []
-
-    try:
-        return _do_request(params)
-    except Exception:
-        # If local clock date range is rejected by NASA server, query default 30-day NASA window
-        if "startDate" in params:
-            return _do_request({"api_key": api_key})
-        raise
+    # DONKI returns a JSON list; ignore any other response shape.
+    payload = response.json()
+    return payload if isinstance(payload, list) else []
 
 
 def parse_flare_class_to_flux(class_type: str) -> float:
@@ -239,13 +217,15 @@ def sync_and_evaluate_nasa_donki(
     gst_events: List[Dict[str, Any]] = []
     flr_events: List[Dict[str, Any]] = []
 
+    # Загружаем каждый тип события NASA в свой список.
     for label, endpoint, target_list in (
         ("SEP", NASA_DONKI_SEP_URL, sep_events),
         ("GST", NASA_DONKI_GST_URL, gst_events),
         ("FLR", NASA_DONKI_FLR_URL, flr_events),
     ):
         try:
-            records = fetch_nasa_donki_endpoint(endpoint, api_key)
+            # Ask NASA for the requested date range; the fetch function retries without dates if needed.
+            records = fetch_nasa_donki_endpoint(endpoint, api_key, start_str, end_str)
             target_list.extend(records)
         except Exception as exc:
             if label in ("SEP", "GST"):
@@ -258,7 +238,7 @@ def sync_and_evaluate_nasa_donki(
 
     cur = conn.cursor()
 
-    # 1. Persist & evaluate Geomagnetic Storms (GST)
+    # Ищем максимальный Kp и сохраняем магнитные бури.
     max_kp = 1.3
     latest_gst_id = "NONE"
     for gst in gst_events:
@@ -285,7 +265,7 @@ def sync_and_evaluate_nasa_donki(
             (gst_id, start_time, event_max_kp, link, now_iso),
         )
 
-    # 2. Persist & evaluate Solar Flares (FLR)
+    # Переводим класс солнечной вспышки в демонстрационный индекс потока.
     max_flare_flux = 1.4
     latest_flr_id = "NONE"
     for flr in flr_events:
@@ -309,7 +289,7 @@ def sync_and_evaluate_nasa_donki(
             (flr_id, begin_time, peak_time, class_type, source_loc, ar_num, flux_est, now_iso),
         )
 
-    # 3. Persist & evaluate Solar Energetic Particle (SEP) Proton Storms
+    # Проверяем события протонных штормов и сохраняем их.
     sep_active = len(sep_events) > 0
     latest_sep_id = "NONE"
     for sep in sep_events:
