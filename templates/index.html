@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AstroWrist 3D — Spaceflight Wearable Telemetry Station</title>
+    <title>Night Shift Garage | Toyota Mark II</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800;900&family=JetBrains+Mono:wght@300;400;600;700&family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
@@ -391,6 +391,48 @@
             color: var(--text-secondary);
         }
         footer a { color: var(--accent-cyan); text-decoration: none; }
+
+        /* Автомобильная тема: графитовый фон, тёплый металл и мягкое свечение. */
+        :root {
+            --bg-space: #090a0b;
+            --panel-bg: rgba(22, 23, 25, 0.94);
+            --panel-border: rgba(224, 169, 77, 0.28);
+            --accent-cyan: #e0a94d;
+            --accent-green: #c7d6c2;
+            --text-primary: #f4f0e8;
+            --text-secondary: #aaa49a;
+            --oled-pixel: #f0c36d;
+        }
+        body { background: radial-gradient(ellipse at 50% -20%, #33302a 0%, #111214 42%, #08090a 100%); }
+        header { background: rgba(12, 13, 14, 0.96); border-bottom-color: rgba(224, 169, 77, 0.3); }
+        .brand-logo { background: linear-gradient(135deg, #f3ca79, #a96827); box-shadow: 0 0 18px rgba(224, 169, 77, 0.25); }
+        .card { border-color: rgba(224, 169, 77, 0.2); box-shadow: 0 16px 45px rgba(0, 0, 0, 0.4); }
+        .view-tab { transition: background 0.2s, transform 0.2s; }
+        .view-tab:hover { transform: translateY(-1px); }
+        .garage-page { margin: 16px 24px; display: flex; flex-direction: column; gap: 16px; }
+        .garage-hero {
+            display: grid; grid-template-columns: 1fr; min-height: 280px; overflow: hidden; padding: 0;
+            background: radial-gradient(ellipse at 85% 20%, rgba(224, 169, 77, 0.18), transparent 42%), var(--panel-bg);
+        }
+        .garage-copy { padding: 34px; display: flex; flex-direction: column; justify-content: center; gap: 14px; }
+        .garage-kicker { color: var(--accent-cyan); font: 600 0.72rem 'JetBrains Mono', monospace; letter-spacing: 0.2em; text-transform: uppercase; }
+        .garage-copy h2 { font: 800 clamp(2rem, 5vw, 4.3rem) 'Orbitron', sans-serif; line-height: 1.05; }
+        .garage-copy p { max-width: 44rem; color: var(--text-secondary); line-height: 1.65; }
+        .garage-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        .garage-feature { overflow: hidden; padding: 0; gap: 0; }
+        .garage-feature img { width: 100%; height: 300px; display: block; object-fit: cover; background: #151515; }
+        .garage-feature img.actor-photo { object-fit: contain; background: radial-gradient(ellipse, #31271d, #111214 70%); }
+        .garage-feature-copy { padding: 18px; }
+        .garage-feature-copy h3 { font: 700 1rem 'Orbitron', sans-serif; margin-bottom: 8px; }
+        .garage-feature-copy p { color: var(--text-secondary); line-height: 1.5; font-size: 0.82rem; }
+        .garage-credit { margin-top: 10px; font-size: 0.68rem !important; }
+        .garage-credit a { color: var(--accent-cyan); }
+        .garage-note { color: var(--text-secondary); font-size: 0.75rem; }
+        @media (max-width: 760px) {
+            .garage-hero, .garage-grid { grid-template-columns: 1fr; }
+            .garage-copy { padding: 24px; }
+            .garage-page, .diary-card, .pulse-demo-card { margin-left: 12px; margin-right: 12px; }
+        }
     </style>
 </head>
 <body>
@@ -398,10 +440,10 @@
     <!-- Header -->
     <header>
         <div class="brand-container">
-            <div class="brand-logo">AW</div>
+            <div class="brand-logo">NG</div>
             <div class="brand-titles">
-                <h1>AstroWrist 3D Telemetry Cockpit</h1>
-                <p>Interactive 3D Hardware Model &amp; NASA Open Science Telemetry</p>
+                <h1>Night Shift Garage</h1>
+                <p>Mark II garage edit · live telemetry dashboard</p>
             </div>
         </div>
 
@@ -418,6 +460,7 @@
         <button class="view-tab active" onclick="showTab('dashboard', this)">Telemetry</button>
         <button class="view-tab" onclick="showTab('pulse', this)">Pulse Wave Demo</button>
         <button class="view-tab" onclick="showTab('diary', this)">Hackathon Diary</button>
+        <button class="view-tab" onclick="showTab('garage', this)">Garage</button>
     </nav>
 
     <!-- Tuning & Injection Bar (+ / - Buttons for Vitals) -->
@@ -646,9 +689,38 @@
         <p><strong>Итог:</strong> весь код и восемь часов жизни ощущаются как один большой балаган, закончившийся в говнище.</p>
     </article>
 
+    <section class="garage-page" id="garageView" style="display: none;">
+        <div class="card garage-hero">
+            <div class="garage-copy">
+                <span class="garage-kicker">Night Shift · Fan-made tribute</span>
+                <h2>TORQUE.<br>STORY.<br>FAMILY.</h2>
+                <p>Отдельный гаражный раздел: Вин Дизель и Toyota Mark II JZX100 — две самостоятельные карточки фан-страницы.</p>
+                <p class="garage-note">Неофициальная страница. Нет утверждения, что Вин Дизель владеет этой Toyota или связан с ней.</p>
+            </div>
+        </div>
+        <div class="garage-grid">
+            <article class="card garage-feature">
+                <img src="https://upload.wikimedia.org/wikipedia/commons/3/3d/JZX100_Toyota_Mark_II.jpg" alt="Toyota Mark II JZX100, вид сбоку" loading="lazy">
+                <div class="garage-feature-copy">
+                    <h3>TOYOTA MARK II · JZX100</h3>
+                    <p>Японский седан X100 поколения Mark II.</p>
+                    <p class="garage-credit">Фото: <a href="https://commons.wikimedia.org/wiki/File:JZX100_Toyota_Mark_II.jpg" target="_blank" rel="noreferrer">N-hid / Wikimedia Commons</a> · общественное достояние.</p>
+                </div>
+            </article>
+            <article class="card garage-feature">
+                <img class="actor-photo" src="https://upload.wikimedia.org/wikipedia/commons/a/a0/VinDieselMarch09.jpg" alt="Портрет Вина Дизеля на премьере Fast & Furious" loading="lazy">
+                <div class="garage-feature-copy">
+                    <h3>VIN DIESEL</h3>
+                    <p>Актёр на премьере Fast &amp; Furious в Лондоне.</p>
+                    <p class="garage-credit">Фото: <a href="https://commons.wikimedia.org/wiki/File:VinDieselMarch09.jpg" target="_blank" rel="noreferrer">Andre Luis / Wikimedia Commons</a> · <a href="https://creativecommons.org/licenses/by-sa/3.0/" target="_blank" rel="noreferrer">CC BY-SA 3.0</a>.</p>
+                </div>
+            </article>
+        </div>
+    </section>
+
     <footer>
         <div>
-            <strong>AstroWrist 3D</strong> — Built for <strong>NASA International Space Apps Challenge 2026</strong>.
+            <strong>Night Shift Garage</strong> — fan-made design page.
         </div>
         <div>
             <a href="https://www.apache.org/licenses/LICENSE-2.0" target="_blank">Apache 2.0 Open Source</a>
@@ -1047,6 +1119,7 @@
             document.getElementById('dashboardView').style.display = name === 'dashboard' ? '' : 'none';
             document.getElementById('pulseDemoView').style.display = name === 'pulse' ? 'flex' : 'none';
             document.getElementById('diaryView').style.display = name === 'diary' ? 'flex' : 'none';
+            document.getElementById('garageView').style.display = name === 'garage' ? 'flex' : 'none';
             document.querySelectorAll('.view-tab').forEach(tab => tab.classList.remove('active'));
             button.classList.add('active');
         }
