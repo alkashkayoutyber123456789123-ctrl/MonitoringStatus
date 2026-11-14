@@ -1,0 +1,1076 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AstroHealth — Astronaut Biodosimetry & Biometric Telemetry Station</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800;900&family=JetBrains+Mono:wght@300;400;600;700&family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-space: #070a12;
+            --panel-bg: rgba(14, 21, 37, 0.78);
+            --panel-border: rgba(38, 62, 107, 0.45);
+            --accent-cyan: #00f0ff;
+            --accent-blue: #1e90ff;
+            --accent-green: #00ff88;
+            --accent-amber: #ffaa00;
+            --accent-red: #ff2a55;
+            --accent-purple: #b537f2;
+            --text-primary: #f0f6fc;
+            --text-secondary: #8b9bb4;
+            --oled-bg: #030708;
+            --oled-pixel: #38bdf8;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background: radial-gradient(circle at 50% 10%, #101c38 0%, #060913 70%);
+            background-color: var(--bg-space);
+            color: var(--text-primary);
+            font-family: 'Inter', sans-serif;
+            min-height: 100vh;
+            overflow-x: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Top Header Navigation */
+        header {
+            background: rgba(8, 14, 27, 0.9);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--panel-border);
+            padding: 12px 28px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .brand-container {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .brand-logo {
+            width: 44px;
+            height: 44px;
+            border-radius: 10px;
+            background: linear-gradient(135deg, #00f0ff 0%, #0051ff 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 900;
+            font-size: 20px;
+            color: #030712;
+            box-shadow: 0 0 20px rgba(0, 240, 255, 0.4);
+        }
+
+        .brand-titles h1 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.25rem;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            color: var(--text-primary);
+        }
+
+        .brand-titles p {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .header-status-group {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .met-badge {
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(0, 240, 255, 0.3);
+            border-radius: 6px;
+            padding: 6px 14px;
+            font-family: 'JetBrains Mono', monospace;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+        }
+
+        .met-label {
+            font-size: 0.65rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+        }
+
+        .met-value {
+            font-size: 1.1rem;
+            color: var(--accent-cyan);
+            font-weight: 700;
+        }
+
+        .status-badge {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.85rem;
+            font-weight: 800;
+            padding: 8px 16px;
+            border-radius: 6px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            box-shadow: 0 0 15px rgba(0, 255, 136, 0.2);
+            transition: all 0.3s ease;
+        }
+
+        .status-nominal {
+            background: rgba(0, 255, 136, 0.15);
+            border: 1px solid var(--accent-green);
+            color: var(--accent-green);
+        }
+
+        .status-stress {
+            background: rgba(255, 170, 0, 0.15);
+            border: 1px solid var(--accent-amber);
+            color: var(--accent-amber);
+            animation: pulse-amber 1.5s infinite;
+        }
+
+        .status-warning {
+            background: rgba(255, 100, 0, 0.2);
+            border: 1px solid #ff7700;
+            color: #ff9933;
+            animation: pulse-amber 1s infinite;
+        }
+
+        .status-abort {
+            background: rgba(255, 42, 85, 0.25);
+            border: 1px solid var(--accent-red);
+            color: var(--accent-red);
+            animation: pulse-red 0.6s infinite;
+        }
+
+        @keyframes pulse-amber {
+            0%, 100% { opacity: 1; filter: drop-shadow(0 0 5px rgba(255, 170, 0, 0.4)); }
+            50% { opacity: 0.6; filter: none; }
+        }
+
+        @keyframes pulse-red {
+            0%, 100% { opacity: 1; filter: drop-shadow(0 0 15px rgba(255, 42, 85, 0.8)); }
+            50% { opacity: 0.5; filter: none; }
+        }
+
+        /* Scenarios Bar (Demo Mode for Judges) */
+        .scenarios-strip {
+            background: rgba(12, 19, 34, 0.7);
+            border-bottom: 1px solid var(--panel-border);
+            padding: 8px 28px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            overflow-x: auto;
+        }
+
+        .scenarios-label {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            color: var(--accent-cyan);
+            text-transform: uppercase;
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .scenario-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            color: var(--text-primary);
+            padding: 6px 14px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-family: 'Inter', sans-serif;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        .scenario-btn:hover {
+            background: rgba(0, 240, 255, 0.15);
+            border-color: var(--accent-cyan);
+            color: #fff;
+        }
+
+        .scenario-btn.active {
+            background: var(--accent-cyan);
+            color: #030712;
+            border-color: var(--accent-cyan);
+            box-shadow: 0 0 12px rgba(0, 240, 255, 0.4);
+        }
+
+        /* Main Grid Layout */
+        main {
+            padding: 24px 28px;
+            display: grid;
+            grid-template-columns: 1fr 1fr 340px;
+            gap: 20px;
+            flex: 1;
+        }
+
+        @media (max-width: 1200px) {
+            main {
+                grid-template-columns: 1fr 1fr;
+            }
+            .hud-column {
+                grid-column: span 2;
+            }
+        }
+
+        @media (max-width: 800px) {
+            main {
+                grid-template-columns: 1fr;
+            }
+            .hud-column {
+                grid-column: span 1;
+            }
+        }
+
+        .telemetry-card {
+            background: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            border-radius: 12px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.37);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            padding-bottom: 10px;
+        }
+
+        .card-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.9rem;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .card-tag {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.65rem;
+            padding: 2px 8px;
+            border-radius: 4px;
+            background: rgba(0, 240, 255, 0.1);
+            color: var(--accent-cyan);
+            border: 1px solid rgba(0, 240, 255, 0.3);
+        }
+
+        /* Vitals Layout */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 14px;
+        }
+
+        .metric-tile {
+            background: rgba(0, 0, 0, 0.25);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 8px;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .metric-name {
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .metric-reading {
+            display: flex;
+            align-items: baseline;
+            gap: 6px;
+            margin: 6px 0;
+        }
+
+        .metric-number {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.8rem;
+            font-weight: 800;
+            color: var(--text-primary);
+        }
+
+        .metric-unit {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .metric-sub {
+            font-size: 0.65rem;
+            color: var(--text-secondary);
+        }
+
+        /* ECG Canvas Container */
+        .ecg-container {
+            background: rgba(2, 6, 14, 0.85);
+            border: 1px solid rgba(0, 240, 255, 0.25);
+            border-radius: 8px;
+            padding: 8px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .ecg-overlay-text {
+            position: absolute;
+            top: 8px;
+            left: 12px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.65rem;
+            color: rgba(0, 240, 255, 0.7);
+            text-transform: uppercase;
+        }
+
+        canvas#ecgCanvas {
+            width: 100%;
+            height: 110px;
+            display: block;
+        }
+
+        /* Radiation Section */
+        .dosimetry-hero {
+            background: linear-gradient(135deg, rgba(255, 42, 85, 0.08) 0%, rgba(20, 28, 52, 0.5) 100%);
+            border: 1px solid rgba(255, 100, 100, 0.2);
+            border-radius: 10px;
+            padding: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .hero-left .hero-label {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            color: #ff8899;
+            text-transform: uppercase;
+        }
+
+        .hero-left .hero-value {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 2.3rem;
+            font-weight: 900;
+            color: #ff3366;
+            text-shadow: 0 0 15px rgba(255, 51, 102, 0.4);
+        }
+
+        .hero-right {
+            text-align: right;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+        }
+
+        .progress-block {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .progress-header {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.75rem;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .bar-track {
+            height: 10px;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 5px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            overflow: hidden;
+        }
+
+        .bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #00ff88 0%, #ffaa00 70%, #ff2a55 100%);
+            width: 1%;
+            transition: width 0.4s ease;
+        }
+
+        /* Space Weather NASA DONKI Card */
+        .donki-feed {
+            background: rgba(10, 18, 36, 0.5);
+            border: 1px solid rgba(0, 150, 255, 0.3);
+            border-radius: 8px;
+            padding: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .donki-alert-box {
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-family: 'JetBrains Mono', monospace;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .donki-nominal {
+            background: rgba(0, 255, 136, 0.1);
+            border: 1px solid rgba(0, 255, 136, 0.3);
+            color: var(--accent-green);
+        }
+
+        .donki-storm {
+            background: rgba(255, 42, 85, 0.2);
+            border: 1px solid var(--accent-red);
+            color: var(--accent-red);
+            font-weight: 700;
+            animation: pulse-red 1s infinite;
+        }
+
+        .donki-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            text-align: center;
+        }
+
+        .donki-stat-tile {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 8px;
+            border-radius: 6px;
+        }
+
+        .donki-stat-num {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.1rem;
+            color: var(--accent-cyan);
+        }
+
+        .donki-stat-lbl {
+            font-size: 0.65rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+        }
+
+        /* Virtual Wrist HUD Mirror */
+        .hud-column {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .wrist-bezel {
+            background: #11141c;
+            border: 4px solid #222938;
+            border-radius: 20px;
+            padding: 16px;
+            box-shadow: inset 0 0 15px rgba(0, 0, 0, 0.8), 0 10px 30px rgba(0, 0, 0, 0.7);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .bezel-label {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.65rem;
+            color: #5d6d88;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        .oled-screen {
+            background: var(--oled-bg);
+            border: 2px solid #1a2233;
+            border-radius: 8px;
+            width: 256px;
+            height: 128px;
+            box-shadow: 0 0 15px rgba(56, 189, 248, 0.15);
+            display: flex;
+            flex-direction: column;
+            padding: 8px 12px;
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--oled-pixel);
+            justify-content: space-between;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .oled-screen::after {
+            content: " ";
+            position: absolute;
+            top: 0; left: 0; bottom: 0; right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%);
+            background-size: 100% 4px;
+            pointer-events: none;
+        }
+
+        .oled-top {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.65rem;
+            border-bottom: 1px dashed rgba(56, 189, 248, 0.3);
+            padding-bottom: 4px;
+        }
+
+        .oled-mid {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            margin: 4px 0;
+        }
+
+        .oled-main-val {
+            font-size: 1.5rem;
+            font-weight: 800;
+        }
+
+        .oled-main-unit {
+            font-size: 0.75rem;
+        }
+
+        .oled-sub-val {
+            font-size: 0.75rem;
+            color: #94a3b8;
+        }
+
+        .oled-bottom {
+            font-size: 0.65rem;
+            border-top: 1px dashed rgba(56, 189, 248, 0.3);
+            padding-top: 4px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        /* Footer */
+        footer {
+            background: rgba(8, 12, 22, 0.95);
+            border-top: 1px solid var(--panel-border);
+            padding: 14px 28px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        footer a {
+            color: var(--accent-cyan);
+            text-decoration: none;
+        }
+        footer a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header Navigation -->
+    <header>
+        <div class="brand-container">
+            <div class="brand-logo">AH</div>
+            <div class="brand-titles">
+                <h1>AstroHealth Station</h1>
+                <p>NASA-STD-3001 Spaceflight Biodosimetry & Biometric Cockpit</p>
+            </div>
+        </div>
+
+        <div class="header-status-group">
+            <div class="met-badge">
+                <span class="met-label">Mission Elapsed Time</span>
+                <span class="met-value" id="metDisplay">+00:00:00</span>
+            </div>
+
+            <div class="status-badge status-nominal" id="crewStatusBadge">
+                NOMINAL
+            </div>
+        </div>
+    </header>
+
+    <!-- Scenarios Toolbar (Interactive Demo Mode for NASA Judges) -->
+    <div class="scenarios-strip">
+        <div class="scenarios-label">
+            <span>⚡ Interactive Mission Scenarios:</span>
+        </div>
+        <button class="scenario-btn active" onclick="triggerScenario('nominal', this)">🟢 1. Nominal Orbital Habitat</button>
+        <button class="scenario-btn" onclick="triggerScenario('eva_spacewalk', this)">🟡 2. EVA Spacewalk (&lt;450 hPa)</button>
+        <button class="scenario-btn" onclick="triggerScenario('exertion_tachycardia', this)">🟠 3. Physical Exertion (BPM &gt; 130)</button>
+        <button class="scenario-btn" onclick="triggerScenario('solar_proton_storm', this)">🔴 4. NASA DONKI SEP Proton Storm</button>
+        <button class="scenario-btn" onclick="triggerScenario('critical_abort', this)">⚠️ 5. Critical Abort &amp; Shelter Ingress</button>
+    </div>
+
+    <!-- Main Content Grid -->
+    <main>
+        <!-- Column 1: Cardiovascular & Suit Environment -->
+        <section class="telemetry-card">
+            <div class="card-header">
+                <div class="card-title">
+                    <span>❤️ Cardiovascular &amp; Hemodynamics</span>
+                </div>
+                <span class="card-tag">NASA-STD-3001 Vitals</span>
+            </div>
+
+            <div class="ecg-container">
+                <div class="ecg-overlay-text">Lead II ECG • 25 mm/s • Telemetry Stream</div>
+                <canvas id="ecgCanvas" width="450" height="110"></canvas>
+            </div>
+
+            <div class="metrics-grid">
+                <div class="metric-tile">
+                    <span class="metric-name">Heart Rate (BPM)</span>
+                    <div class="metric-reading">
+                        <span class="metric-number" id="valHeartRate">72</span>
+                        <span class="metric-unit">BPM</span>
+                    </div>
+                    <span class="metric-sub" id="lblBpmSub">Normal Sinus Rhythm</span>
+                </div>
+
+                <div class="metric-tile">
+                    <span class="metric-name">Blood Pressure</span>
+                    <div class="metric-reading">
+                        <span class="metric-number" id="valBloodPressure">118/76</span>
+                        <span class="metric-unit">mmHg</span>
+                    </div>
+                    <span class="metric-sub" id="lblMapSub">MAP: 90.0 mmHg</span>
+                </div>
+
+                <div class="metric-tile">
+                    <span class="metric-name">Pulse Oximetry (SpO2)</span>
+                    <div class="metric-reading">
+                        <span class="metric-number" id="valSpo2">98.4</span>
+                        <span class="metric-unit">%</span>
+                    </div>
+                    <span class="metric-sub">Arterial Oxygenation</span>
+                </div>
+
+                <div class="metric-tile">
+                    <span class="metric-name">Respiration Rate</span>
+                    <div class="metric-reading">
+                        <span class="metric-number" id="valResp">14</span>
+                        <span class="metric-unit">BrPM</span>
+                    </div>
+                    <span class="metric-sub">Eupneic Respiration</span>
+                </div>
+            </div>
+
+            <!-- Cabin & Suit Barometrics -->
+            <div class="card-header" style="margin-top: 10px;">
+                <div class="card-title">
+                    <span>🛡️ Cabin &amp; Suit Barometrics</span>
+                </div>
+                <span class="card-tag" id="valOperatingModeTag">[MODULE]</span>
+            </div>
+
+            <div class="metrics-grid">
+                <div class="metric-tile">
+                    <span class="metric-name">Ambient Pressure</span>
+                    <div class="metric-reading">
+                        <span class="metric-number" id="valPressure">1013.2</span>
+                        <span class="metric-unit">hPa</span>
+                    </div>
+                    <span class="metric-sub" id="valPressurePsi">14.7 psi • Habitat Atmosphere</span>
+                </div>
+
+                <div class="metric-tile">
+                    <span class="metric-name">Suit / Module Temp</span>
+                    <div class="metric-reading">
+                        <span class="metric-number" id="valTemp">21.8</span>
+                        <span class="metric-unit">°C</span>
+                    </div>
+                    <span class="metric-sub">Thermal Control Loop</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Column 2: Radiation Dosimetry & Space Weather -->
+        <section class="telemetry-card">
+            <div class="card-header">
+                <div class="card-title">
+                    <span>☢️ Ionizing Radiation Dosimetry</span>
+                </div>
+                <span class="card-tag">J305 Geiger-Müller Model</span>
+            </div>
+
+            <!-- Hero Dose Rate -->
+            <div class="dosimetry-hero">
+                <div class="hero-left">
+                    <div class="hero-label">Dose Equivalent Rate</div>
+                    <div class="hero-value" id="valDoseRate">0.146 <span style="font-size: 1rem;">μSv/h</span></div>
+                </div>
+                <div class="hero-right">
+                    <div>Raw: <span id="valRawCpm">18.0</span> CPM</div>
+                    <div>Dead-Time Corrected: <span id="valTrueCpm">18.0</span> CPM</div>
+                    <div style="color: #64748b; font-size: 0.65rem; margin-top: 4px;">τ = 190 μs recovery</div>
+                </div>
+            </div>
+
+            <!-- Cumulative Dose Limits (NASA-STD-3001) -->
+            <div class="progress-block">
+                <div class="progress-header">
+                    <span>30-Day BFO Limit (NASA-STD-3001: 250 mSv)</span>
+                    <span id="lbl30dText">1.43 / 250.0 mSv (0.57%)</span>
+                </div>
+                <div class="bar-track">
+                    <div class="bar-fill" id="bar30d" style="width: 1%;"></div>
+                </div>
+            </div>
+
+            <div class="progress-block">
+                <div class="progress-header">
+                    <span>Career Effective Limit (600 mSv)</span>
+                    <span id="lblCareerText">1.43 / 600.0 mSv (0.24%)</span>
+                </div>
+                <div class="bar-track">
+                    <div class="bar-fill" id="barCareer" style="width: 1%;"></div>
+                </div>
+            </div>
+
+            <div class="metrics-grid">
+                <div class="metric-tile">
+                    <span class="metric-name">Time-To-Limit (TTL)</span>
+                    <div class="metric-reading">
+                        <span class="metric-number" id="valTtl">&gt;9999</span>
+                        <span class="metric-unit">Hours</span>
+                    </div>
+                    <span class="metric-sub">Safe working time at current flux</span>
+                </div>
+
+                <div class="metric-tile">
+                    <span class="metric-name">Active Warning Threshold</span>
+                    <div class="metric-reading">
+                        <span class="metric-number" id="valThreshold">15.0</span>
+                        <span class="metric-unit">μSv/h</span>
+                    </div>
+                    <span class="metric-sub" id="lblThresholdContext">Module: 15.0 | EVA: 8.0 μSv/h</span>
+                </div>
+            </div>
+
+            <!-- NASA Space Weather DONKI Live Feed -->
+            <div class="card-header" style="margin-top: 10px;">
+                <div class="card-title">
+                    <span>🛰️ NASA Space Weather (DONKI API)</span>
+                </div>
+                <button onclick="syncDonkiNow()" style="background: none; border: 1px solid rgba(0,240,255,0.4); color: var(--accent-cyan); border-radius: 4px; padding: 2px 8px; font-size: 0.65rem; cursor: pointer;">Sync Live</button>
+            </div>
+
+            <div class="donki-feed">
+                <div class="donki-alert-box donki-nominal" id="donkiBanner">
+                    <span id="donkiHeadline">NASA DONKI: All clear (Quiet solar activity)</span>
+                </div>
+
+                <div class="donki-stats">
+                    <div class="donki-stat-tile">
+                        <div class="donki-stat-num" id="valSolarFlux">1.2</div>
+                        <div class="donki-stat-lbl">Solar Flux (pfu)</div>
+                    </div>
+                    <div class="donki-stat-tile">
+                        <div class="donki-stat-num" id="valKpIndex">2.0</div>
+                        <div class="donki-stat-lbl">Kp Geomagnetic</div>
+                    </div>
+                    <div class="donki-stat-tile">
+                        <div class="donki-stat-num" id="valFlareClass">C2.1</div>
+                        <div class="donki-stat-lbl">X-Ray Flare</div>
+                    </div>
+                </div>
+
+                <div style="font-size: 0.65rem; color: #64748b; font-family: 'JetBrains Mono', monospace;" id="donkiSyncStamp">
+                    Last Sync: Initializing...
+                </div>
+            </div>
+        </section>
+
+        <!-- Column 3: Virtual AstroWrist Wearable HUD -->
+        <section class="hud-column">
+            <div class="telemetry-card" style="align-items: center;">
+                <div class="card-header" style="width: 100%;">
+                    <div class="card-title">
+                        <span>⌚ AstroWrist HUD Mirror</span>
+                    </div>
+                    <span class="card-tag">128x64 OLED</span>
+                </div>
+
+                <p style="font-size: 0.75rem; color: var(--text-secondary); text-align: center;">
+                    Pixel-identical software emulator of the astronaut's wrist-worn dosimeter instrument.
+                </p>
+
+                <!-- Hardware Wrist Bezel -->
+                <div class="wrist-bezel">
+                    <span class="bezel-label">ASTRO-WRIST HUD</span>
+                    <div class="oled-screen" id="oledScreen">
+                        <div class="oled-top">
+                            <span id="oledModeTag">[MODULE]</span>
+                            <span id="oledHr">♥ 72 BPM</span>
+                            <span>BAT 94%</span>
+                        </div>
+                        <div class="oled-mid">
+                            <div>
+                                <span class="oled-main-val" id="oledDoseRate">0.15</span>
+                                <span class="oled-main-unit">uSv/h</span>
+                            </div>
+                            <div class="oled-sub-val" id="oledCpm">18 CPM</div>
+                        </div>
+                        <div class="oled-bottom">
+                            <span id="oledDoseAcc">ACC: 1.43 mSv</span>
+                            <span id="oledStatus">NOMINAL</span>
+                        </div>
+                    </div>
+                    <span class="bezel-label" style="font-size: 0.55rem;">ESP32-WROOM-32D / J305 GM</span>
+                </div>
+
+                <button onclick="resetDoseCounter()" style="width: 100%; margin-top: 10px; background: rgba(255, 42, 85, 0.15); border: 1px solid var(--accent-red); color: var(--accent-red); padding: 8px; border-radius: 6px; font-size: 0.75rem; font-family: 'JetBrains Mono', monospace; cursor: pointer;">
+                    Reset Cumulative Mission Dose
+                </button>
+            </div>
+
+            <!-- Quick Specs Info -->
+            <div class="telemetry-card" style="font-size: 0.75rem; line-height: 1.6; color: var(--text-secondary);">
+                <div class="card-title" style="margin-bottom: 6px;">
+                    <span>📋 System Architecture</span>
+                </div>
+                <p>• <strong>Physics Model:</strong> Non-paralyzable dead-time equation with $\tau = 190\ \mu\text{s}$ and J305 calibrated sensitivity ($0.00812\ \mu\text{Sv/h/CPM}$).</p>
+                <p>• <strong>Auto-EVA Detector:</strong> Activates under $450\text{ hPa}$, dynamically tightening dose alert limits for unshielded space.</p>
+                <p>• <strong>Space Weather:</strong> Direct NASA DONKI API integration for early solar proton storm warnings.</p>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer>
+        <div>
+            <strong>AstroHealth Station</strong> — Built for <strong>NASA International Space Apps Challenge 2026</strong> (Challenge 6: Health Monitoring Software).
+        </div>
+        <div>
+            Licensed under <a href="https://www.apache.org/licenses/LICENSE-2.0" target="_blank">Apache 2.0 Open Source License</a>.
+        </div>
+    </footer>
+
+    <!-- Real-time Telemetry & ECG Rendering Script -->
+    <script>
+        const canvas = document.getElementById('ecgCanvas');
+        const ctx = canvas.getContext('2d');
+        let ecgData = new Array(200).fill(55);
+        let ecgPhase = 0;
+        let currentBpm = 72;
+
+        // Draw animated ECG wave
+        function drawEcg() {
+            ctx.fillStyle = 'rgba(2, 6, 14, 0.25)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw grid
+            ctx.strokeStyle = 'rgba(0, 240, 255, 0.08)';
+            ctx.lineWidth = 1;
+            for (let x = 0; x < canvas.width; x += 25) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, canvas.height);
+                ctx.stroke();
+            }
+            for (let y = 0; y < canvas.height; y += 25) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(canvas.width, y);
+                ctx.stroke();
+            }
+
+            // Advance phase based on BPM
+            const speed = (currentBpm / 60) * 0.12;
+            ecgPhase = (ecgPhase + speed) % (2 * Math.PI);
+
+            // Generate synthetic P-Q-R-S-T wave point
+            let yVal = 55;
+            let p = ecgPhase;
+
+            if (p > 0.5 && p < 0.9) {
+                // P-wave
+                yVal -= Math.sin((p - 0.5) / 0.4 * Math.PI) * 7;
+            } else if (p >= 1.1 && p < 1.2) {
+                // Q-dip
+                yVal += 6;
+            } else if (p >= 1.2 && p < 1.35) {
+                // R-spike
+                yVal -= Math.sin((p - 1.2) / 0.15 * Math.PI) * 44;
+            } else if (p >= 1.35 && p < 1.45) {
+                // S-dip
+                yVal += 12;
+            } else if (p > 1.7 && p < 2.3) {
+                // T-wave
+                yVal -= Math.sin((p - 1.7) / 0.6 * Math.PI) * 11;
+            }
+
+            ecgData.push(yVal);
+            if (ecgData.length > canvas.width) {
+                ecgData.shift();
+            }
+
+            // Draw wave
+            ctx.strokeStyle = '#00f0ff';
+            ctx.lineWidth = 2;
+            ctx.shadowBlur = 8;
+            ctx.shadowColor = '#00f0ff';
+            ctx.beginPath();
+            for (let i = 0; i < ecgData.length; i++) {
+                if (i === 0) ctx.moveTo(i, ecgData[i]);
+                else ctx.lineTo(i, ecgData[i]);
+            }
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+
+            requestAnimationFrame(drawEcg);
+        }
+        drawEcg();
+
+        // Telemetry Poller
+        async function fetchTelemetry() {
+            try {
+                const res = await fetch('/api/telemetry');
+                if (!res.ok) return;
+                const data = await res.json();
+
+                // MET & Status
+                document.getElementById('metDisplay').innerText = data.met;
+                const statusBadge = document.getElementById('crewStatusBadge');
+                statusBadge.innerText = data.crew_status.replace('_', ' ');
+                statusBadge.className = 'status-badge';
+                if (data.crew_status === 'NOMINAL') statusBadge.classList.add('status-nominal');
+                else if (data.crew_status === 'BIOMETRIC_STRESS') statusBadge.classList.add('status-stress');
+                else if (data.crew_status === 'RADIATION_WARNING') statusBadge.classList.add('status-warning');
+                else statusBadge.classList.add('status-abort');
+
+                // Vitals
+                currentBpm = data.vitals.heart_rate_bpm;
+                document.getElementById('valHeartRate').innerText = currentBpm;
+                document.getElementById('valBloodPressure').innerText = `${data.vitals.systolic_bp}/${data.vitals.diastolic_bp}`;
+                document.getElementById('lblMapSub').innerText = `MAP: ${data.vitals.map_bp} mmHg`;
+                document.getElementById('valSpo2').innerText = data.vitals.spo2_percent;
+                document.getElementById('valResp').innerText = data.vitals.respiration_brpm;
+                document.getElementById('valPressure').innerText = data.vitals.suit_pressure_hpa;
+                document.getElementById('valPressurePsi').innerText = `${data.vitals.suit_pressure_psi} psi • ${data.operating_mode === 'EVA' ? 'xEMU Spacesuit' : 'Habitat Atmosphere'}`;
+                document.getElementById('valTemp').innerText = data.vitals.suit_temp_c;
+                document.getElementById('valOperatingModeTag').innerText = `[${data.operating_mode}]`;
+
+                if (currentBpm > 130) {
+                    document.getElementById('lblBpmSub').innerText = '⚠️ TACHYCARDIA DETECTED';
+                    document.getElementById('lblBpmSub').style.color = '#ff2a55';
+                } else {
+                    document.getElementById('lblBpmSub').innerText = 'Normal Sinus Rhythm';
+                    document.getElementById('lblBpmSub').style.color = '#8b9bb4';
+                }
+
+                // Dosimetry
+                document.getElementById('valDoseRate').innerHTML = `${data.dosimetry.dose_rate_usvh} <span style="font-size: 1rem;">μSv/h</span>`;
+                document.getElementById('valRawCpm').innerText = data.dosimetry.raw_cpm;
+                document.getElementById('valTrueCpm').innerText = data.dosimetry.true_cpm;
+                document.getElementById('lbl30dText').innerText = `${data.dosimetry.accumulated_dose_msv} / 250.0 mSv (${data.dosimetry.pct_30d_limit}%)`;
+                document.getElementById('bar30d').style.width = `${Math.min(100, Math.max(1, data.dosimetry.pct_30d_limit))}%`;
+
+                document.getElementById('lblCareerText').innerText = `${data.dosimetry.accumulated_dose_msv} / 600.0 mSv (${data.dosimetry.pct_career_limit}%)`;
+                document.getElementById('barCareer').style.width = `${Math.min(100, Math.max(1, data.dosimetry.pct_career_limit))}%`;
+
+                document.getElementById('valTtl').innerText = data.dosimetry.time_to_limit_hours;
+                document.getElementById('valThreshold').innerText = data.dosimetry.warn_limit_usvh;
+                document.getElementById('lblThresholdContext').innerText = `Mode: [${data.operating_mode}] (Warn: ${data.dosimetry.warn_limit_usvh} | Crit: ${data.dosimetry.crit_limit_usvh} μSv/h)`;
+
+                // Space Weather
+                const donki = data.nasa_donki;
+                const banner = document.getElementById('donkiBanner');
+                document.getElementById('donkiHeadline').innerText = donki.event_headline;
+                document.getElementById('valSolarFlux').innerText = donki.solar_flux_pfu;
+                document.getElementById('valKpIndex').innerText = donki.kp_index;
+                document.getElementById('valFlareClass').innerText = donki.flare_class;
+                document.getElementById('donkiSyncStamp').innerText = `Last Sync: ${donki.last_sync}`;
+
+                if (donki.sep_storm) {
+                    banner.className = 'donki-alert-box donki-storm';
+                } else {
+                    banner.className = 'donki-alert-box donki-nominal';
+                }
+
+                // Virtual Wrist OLED HUD
+                document.getElementById('oledModeTag').innerText = `[${data.operating_mode}]`;
+                document.getElementById('oledHr').innerText = `♥ ${Math.round(currentBpm)} BPM`;
+                document.getElementById('oledDoseRate').innerText = data.dosimetry.dose_rate_usvh;
+                document.getElementById('oledCpm').innerText = `${Math.round(data.dosimetry.true_cpm)} CPM`;
+                document.getElementById('oledDoseAcc').innerText = `ACC: ${data.dosimetry.accumulated_dose_msv} mSv`;
+                document.getElementById('oledStatus').innerText = data.crew_status;
+
+                const oledScreen = document.getElementById('oledScreen');
+                if (data.crew_status === 'CRITICAL_ABORT') {
+                    oledScreen.style.borderColor = '#ff2a55';
+                    oledScreen.style.color = '#ff2a55';
+                } else {
+                    oledScreen.style.borderColor = '#1a2233';
+                    oledScreen.style.color = '#38bdf8';
+                }
+
+            } catch (err) {
+                console.error("Telemetry fetch error:", err);
+            }
+        }
+
+        setInterval(fetchTelemetry, 1000);
+        fetchTelemetry();
+
+        // Scenario Triggering
+        async function triggerScenario(name, btnElement) {
+            document.querySelectorAll('.scenario-btn').forEach(btn => btn.classList.remove('active'));
+            if (btnElement) btnElement.classList.add('active');
+
+            try {
+                await fetch(`/api/scenario/${name}`, { method: 'POST' });
+                fetchTelemetry();
+            } catch (err) {
+                console.error("Scenario switch error:", err);
+            }
+        }
+
+        // Reset Dose
+        async function resetDoseCounter() {
+            if (confirm("Reset cumulative absorbed radiation dose to 0.0 mSv?")) {
+                await fetch('/api/reset_dose', { method: 'POST' });
+                fetchTelemetry();
+            }
+        }
+
+        // Sync NASA DONKI
+        async function syncDonkiNow() {
+            try {
+                const res = await fetch('/api/donki_sync');
+                const data = await res.json();
+                document.getElementById('donkiHeadline').innerText = data.event;
+                document.getElementById('donkiSyncStamp').innerText = `Last Sync: ${data.sync_time}`;
+            } catch (err) {
+                console.error("Sync error:", err);
+            }
+        }
+    </script>
+</body>
+</html>
