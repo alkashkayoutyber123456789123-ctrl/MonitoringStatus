@@ -1081,6 +1081,7 @@
             document.querySelectorAll('.btn-view').forEach(b => b.classList.remove('active'));
             if (btnElement) btnElement.classList.add('active');
             isAutoRotating = false;
+            if (!camera || !controls) return;
 
             if (view === 'front') {
                 camera.position.set(0, 4.5, 6.5);
@@ -1346,9 +1347,13 @@
 
         // Boot
         window.onload = () => {
-            init3D();
             setInterval(fetchTelemetry, 1000);
             fetchTelemetry();
+            try {
+                init3D();
+            } catch (error) {
+                console.error('3D model could not start; dashboard controls remain available.', error);
+            }
         };
     </script>
 </body>
