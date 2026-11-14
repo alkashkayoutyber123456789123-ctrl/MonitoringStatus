@@ -497,10 +497,32 @@
         .calc-key.operator { color: var(--accent-cyan); }
         .calc-key.equals { background: var(--accent-cyan); color: #101010; }
         .calc-key.wide { grid-column: span 2; }
+        .fishing-page { display: none; justify-content: center; margin: 24px; }
+        .fishing-game { width: min(100%, 720px); align-items: center; text-align: center; }
+        .fishing-game h2 { font: 700 1.15rem 'Orbitron', sans-serif; }
+        .fishing-note, .fishing-status, .fishing-score { color: var(--text-secondary); line-height: 1.6; }
+        .fishing-pond { position: relative; width: 100%; height: 250px; overflow: hidden; border: 1px solid rgba(130, 185, 211, 0.35); border-radius: 14px; background: linear-gradient(#141c2b 0 38%, #29384b 39%, #102c3b 40%, #071a24 100%); }
+        .fishing-moon { position: absolute; top: 22px; right: 13%; width: 46px; height: 46px; border-radius: 50%; background: #f3dda5; box-shadow: 0 0 35px #f3dda577; }
+        .fishing-reed { position: absolute; bottom: 43%; left: 12%; color: #6e8b61; font-size: 3.4rem; transform: rotate(-12deg); }
+        .fishing-line { position: absolute; top: 27%; left: 47%; width: 1px; height: 34%; background: #ddd9cb; }
+        .fishing-bobber { position: absolute; left: calc(47% - 9px); top: 58%; width: 18px; height: 28px; border-radius: 50% 50% 45% 45%; background: linear-gradient(#ff7777 0 48%, #f4f0e8 49%); box-shadow: 0 0 12px #ff777766; }
+        .fishing-ripple { position: absolute; top: 69%; left: calc(47% - 27px); width: 54px; height: 12px; border: 1px solid #82bad566; border-radius: 50%; }
+        .fishing-pond.biting .fishing-bobber { animation: bobber-bite 0.35s infinite alternate; }
+        .fishing-pond.waiting .fishing-bobber { animation: bobber-float 1.5s ease-in-out infinite alternate; }
+        @keyframes bobber-float { to { transform: translateY(7px); } }
+        @keyframes bobber-bite { to { transform: translateY(18px) scale(0.85); } }
+        .fishing-action, .fishing-choice { border: 1px solid var(--panel-border); border-radius: 999px; padding: 12px 24px; background: #191a1c; color: var(--text-primary); font-weight: 700; cursor: pointer; }
+        .fishing-action { min-width: 190px; background: var(--accent-cyan); color: #151515; }
+        .fishing-action:disabled { opacity: 0.55; cursor: wait; }
+        .fishing-choices { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+        .fishing-choice:hover, .fishing-action:not(:disabled):hover { filter: brightness(1.15); }
+        .fishing-catch { width: 100%; padding: 16px; border: 1px solid var(--panel-border); border-radius: 12px; background: rgba(255,255,255,0.04); }
+        .fishing-avatar { font-size: 3.4rem; margin-bottom: 8px; }
+        .fishing-catch h3 { margin-bottom: 6px; }
         @media (max-width: 760px) {
             .garage-hero, .garage-grid, .garage-extra, .memorial-card { grid-template-columns: 1fr; }
             .garage-copy { padding: 24px; }
-            .garage-page, .diary-card, .pulse-demo-card, .swipe-page, .calculator-page { margin-left: 12px; margin-right: 12px; }
+            .garage-page, .diary-card, .pulse-demo-card, .swipe-page, .calculator-page, .fishing-page { margin-left: 12px; margin-right: 12px; }
             .swipe-card { height: 58vh; min-height: 320px; }
         }
     </style>
@@ -540,6 +562,7 @@
         <button class="view-tab" onclick="showTab('garage', this)">Garage</button>
         <button class="view-tab" onclick="showTab('swipe', this)">Мем-свайп</button>
         <button class="view-tab" onclick="showTab('calculator', this)">Калькулятор</button>
+        <button class="view-tab" onclick="showTab('fishing', this)">Рыбалка на альтушек</button>
     </nav>
 
     <!-- Tuning & Injection Bar (+ / - Buttons for Vitals) -->
@@ -876,6 +899,32 @@
                 <button class="calc-key" onclick="calculatorInput('.')">,</button>
                 <button class="calc-key equals" onclick="calculatorEquals()">=</button>
             </div>
+        </article>
+    </section>
+
+    <section class="fishing-page" id="fishingView">
+        <article class="card fishing-game">
+            <h2>Рыбалка на альтушек</h2>
+            <p class="fishing-note">Шуточная аркада: все персонажи вымышленные и совершеннолетние. Знакомство — только если оба хотят общаться.</p>
+            <div class="fishing-pond" id="fishingPond" aria-label="Ночной пруд">
+                <span class="fishing-moon"></span>
+                <span class="fishing-reed">♧</span>
+                <span class="fishing-line"></span>
+                <span class="fishing-bobber"></span>
+                <span class="fishing-ripple"></span>
+            </div>
+            <p class="fishing-status" id="fishingStatus" aria-live="polite">Нажми «Забросить» и жди поклёвку.</p>
+            <button class="fishing-action" id="fishingAction" type="button" onclick="fishingActionClick()">Забросить</button>
+            <article class="fishing-catch" id="fishingCatch" hidden>
+                <div class="fishing-avatar" id="fishingAvatar"></div>
+                <h3 id="fishingCatchTitle"></h3>
+                <p id="fishingCatchText"></p>
+            </article>
+            <div class="fishing-choices" id="fishingChoices" hidden>
+                <button class="fishing-choice" type="button" onclick="fishingSayHello()">Поздороваться</button>
+                <button class="fishing-choice" type="button" onclick="fishingLetGo()">Пожелать хорошего вечера</button>
+            </div>
+            <p class="fishing-score" id="fishingScore">Рыб поймано: 0 · приятных знакомств: 0</p>
         </article>
     </section>
 
@@ -1591,8 +1640,131 @@
             document.getElementById('garageView').style.display = name === 'garage' ? 'flex' : 'none';
             document.getElementById('swipeView').style.display = name === 'swipe' ? 'flex' : 'none';
             document.getElementById('calculatorView').style.display = name === 'calculator' ? 'flex' : 'none';
+            document.getElementById('fishingView').style.display = name === 'fishing' ? 'flex' : 'none';
             document.querySelectorAll('.view-tab').forEach(tab => tab.classList.remove('active'));
             button.classList.add('active');
+        }
+
+        const fishingCharacters = [
+            { name: 'Мира', style: 'пост-панк', icon: '🦇', line: 'Читает сборник стихов у воды.' },
+            { name: 'Луна', style: 'дарк-академия', icon: '🌙', line: 'Ищет вдохновение для нового рассказа.' },
+            { name: 'Ева', style: 'альт-рок', icon: '🎸', line: 'Слушает музыку и любуется отражением луны.' },
+            { name: 'Ника', style: 'гранж', icon: '🖤', line: 'Рисует звёзды в блокноте.' }
+        ];
+        let fishingPhase = 'ready';
+        let fishingTimer = null;
+        let fishingMissTimer = null;
+        let fishingCharacter = null;
+        let fishingFishCount = 0;
+        let fishingChatCount = 0;
+
+        function fishingUpdateScore() {
+            document.getElementById('fishingScore').textContent = `Рыб поймано: ${fishingFishCount} · приятных знакомств: ${fishingChatCount}`;
+        }
+
+        function fishingFinishRound(message) {
+            clearTimeout(fishingTimer);
+            clearTimeout(fishingMissTimer);
+            fishingPhase = 'landed';
+            document.getElementById('fishingPond').classList.remove('waiting', 'biting');
+            document.getElementById('fishingStatus').textContent = message;
+            const button = document.getElementById('fishingAction');
+            button.disabled = false;
+            button.textContent = 'Забросить снова';
+        }
+
+        function fishingMissedBite() {
+            if (fishingPhase !== 'bite') return;
+            fishingPhase = 'landed';
+            document.getElementById('fishingPond').classList.remove('waiting', 'biting');
+            document.getElementById('fishingStatus').textContent = 'Поклёвка ушла. Попробуем ещё раз?';
+            const button = document.getElementById('fishingAction');
+            button.disabled = false;
+            button.textContent = 'Забросить снова';
+        }
+
+        function fishingActionClick() {
+            const pond = document.getElementById('fishingPond');
+            const button = document.getElementById('fishingAction');
+            if (fishingPhase === 'ready' || fishingPhase === 'landed') {
+                fishingPhase = 'waiting';
+                document.getElementById('fishingCatch').hidden = true;
+                document.getElementById('fishingChoices').hidden = true;
+                document.getElementById('fishingStatus').textContent = 'Поплавок на воде… следи за ним.';
+                pond.classList.remove('biting');
+                pond.classList.add('waiting');
+                button.disabled = true;
+                button.textContent = 'Ждём поклёвку…';
+                fishingTimer = setTimeout(() => {
+                    if (fishingPhase !== 'waiting') return;
+                    fishingPhase = 'bite';
+                    pond.classList.remove('waiting');
+                    pond.classList.add('biting');
+                    document.getElementById('fishingStatus').textContent = 'Клюёт! Быстро подсекай!';
+                    button.disabled = false;
+                    button.textContent = 'Подсечь!';
+                    fishingMissTimer = setTimeout(fishingMissedBite, 4200);
+                }, 2500 + Math.random() * 4000);
+                return;
+            }
+            if (fishingPhase === 'bite') {
+                clearTimeout(fishingMissTimer);
+                pond.classList.remove('waiting', 'biting');
+                const caught = document.getElementById('fishingCatch');
+                const icon = document.getElementById('fishingAvatar');
+                const title = document.getElementById('fishingCatchTitle');
+                const details = document.getElementById('fishingCatchText');
+                caught.hidden = false;
+                if (Math.random() < 0.42) {
+                    fishingCharacter = fishingCharacters[Math.floor(Math.random() * fishingCharacters.length)];
+                    icon.textContent = fishingCharacter.icon;
+                    title.textContent = `У берега встретилась ${fishingCharacter.name} · ${fishingCharacter.style}`;
+                    details.textContent = `${fishingCharacter.line} Это вымышленный персонаж — можно поздороваться или спокойно дать ей пройти.`;
+                    document.getElementById('fishingChoices').hidden = false;
+                    document.getElementById('fishingStatus').textContent = 'Тут не ловят людей: реши, хочешь ли начать разговор.';
+                    fishingPhase = 'choice';
+                    button.disabled = true;
+                    button.textContent = 'Выбери действие ниже';
+                    return;
+                }
+                const fish = [
+                    { icon: '🐟', name: 'серебристый карась' },
+                    { icon: '🐠', name: 'неоновая рыбка' },
+                    { icon: '🦑', name: 'ночной кальмар' },
+                    { icon: '🥾', name: 'старый резиновый сапог' }
+                ][Math.floor(Math.random() * 4)];
+                icon.textContent = fish.icon;
+                title.textContent = `Улов: ${fish.name}!`;
+                details.textContent = fish.name.includes('сапог') ? 'Даже в пруду бывает сюрприз.' : 'Отличная поклёвка!';
+                fishingFishCount++;
+                fishingUpdateScore();
+                fishingFinishRound('Улов на берегу! Готов к следующему забросу?');
+            }
+        }
+
+        function fishingSayHello() {
+            if (fishingPhase !== 'choice') return;
+            document.getElementById('fishingChoices').hidden = true;
+            const title = document.getElementById('fishingCatchTitle');
+            const details = document.getElementById('fishingCatchText');
+            if (Math.random() < 0.65) {
+                fishingChatCount++;
+                title.textContent = `${fishingCharacter.name} улыбнулась и согласилась поболтать.`;
+                details.textContent = 'Вы познакомились у пруда. Хороший вечер начинается с взаимного интереса.';
+                fishingUpdateScore();
+            } else {
+                title.textContent = `${fishingCharacter.name} вежливо отказалась.`;
+                details.textContent = 'Ты пожелал ей хорошего вечера и уважил её решение.';
+            }
+            fishingFinishRound('Разговор окончен. Можно забрасывать снова.');
+        }
+
+        function fishingLetGo() {
+            if (fishingPhase !== 'choice') return;
+            document.getElementById('fishingChoices').hidden = true;
+            document.getElementById('fishingCatchTitle').textContent = `${fishingCharacter.name} пошла дальше по берегу.`;
+            document.getElementById('fishingCatchText').textContent = 'Ты оставил ей хорошее настроение и пруд — рыбам.';
+            fishingFinishRound('Пусть вечер будет спокойным для всех.');
         }
 
         let calculatorCurrent = '0';
