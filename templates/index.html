@@ -630,6 +630,8 @@
         @keyframes retro-scroll { to { transform: translateX(-100%); } }
         .retro-status { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px; padding: 6px 8px; border-top: 1px solid #aaa69b; font-size: 0.7rem; }
         .retro-stamp { padding: 2px 5px; border: 1px solid #777; background: #faf9f5; font-weight: bold; }
+        .retro-audio-button { border: 2px outset #fff; border-radius: 2px; padding: 3px 8px; background: linear-gradient(#faf9f5, #d6d3ca); color: #111; font: bold 0.7rem Tahoma, Verdana, sans-serif; cursor: pointer; }
+        .retro-audio-button:active { border-style: inset; }
         footer { display: flex; flex-wrap: wrap; gap: 10px; padding: 10px 12px; border: 1px solid #808080; border-top: 0; background: #d4d0c8; color: #222; }
         .window-prank { border: 2px outset #fff; border-radius: 3px; background: linear-gradient(#5d9cec, #17469d); color: white; }
         .window-prank strong, .window-prank small { color: white; }
@@ -653,7 +655,7 @@
 
     <div class="retro-welcome">
         <div class="retro-marquee"><span>★ WELCOME TO NIGHT SHIFT GARAGE ★ YOUR FRIENDLY CORNER OF THE WORLD WIDE WEB ★ SIGN THE GUESTBOOK IN YOUR HEART ★</span></div>
-        <div class="retro-status"><span class="retro-stamp">🚧 UNDER CONSTRUCTION</span><span class="retro-stamp">BEST VIEWED AT 1024 × 768</span><span>Updated: <span id="retroUpdated">15 Nov 2003</span></span></div>
+        <div class="retro-status"><span class="retro-stamp">🚧 UNDER CONSTRUCTION</span><span class="retro-stamp">BEST VIEWED AT 1024 × 768</span><button class="retro-audio-button" id="dialupButton" type="button" onclick="playRetroDialup()">☎ 56K dial-up</button><span>Updated: <span id="retroUpdated">15 Nov 2003</span></span></div>
     </div>
 
     <!-- Header -->
@@ -673,6 +675,7 @@
             </div>
             <div class="status-badge status-nominal" id="crewStatusBadge">NOMINAL</div>
             <button class="view-tab music-button" id="musicButton" onclick="toggleNirvanaPlayback()" aria-label="Play or pause music">Play music</button>
+            <button class="retro-audio-button" id="retroSoundToggle" type="button" onclick="toggleRetroSound()" aria-pressed="false">🔇 Звуки: выкл.</button>
         </div>
     </header>
 
@@ -2300,6 +2303,94 @@
         } catch (error) {
             document.getElementById('visitCounter').textContent = '00001';
         }
+
+        let retroSoundEnabled = false;
+        let retroAudioContext = null;
+
+        function getRetroAudioContext() {
+            const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+            if (!AudioContextClass) return null;
+            if (!retroAudioContext) retroAudioContext = new AudioContextClass();
+            if (retroAudioContext.state === 'suspended') retroAudioContext.resume().catch(() => {});
+            return retroAudioContext;
+        }
+
+        function playRetroTones(notes) {
+            if (!retroSoundEnabled) return;
+            const context = getRetroAudioContext();
+            if (!context) return;
+            const baseTime = context.currentTime;
+            notes.forEach(note => {
+                const start = baseTime + (note.delay || 0);
+                const frequencies = Array.isArray(note.freq) ? note.freq : [note.freq];
+                frequencies.forEach(frequency => {
+                    const oscillator = context.createOscillator();
+                    const gain = context.createGain();
+                    oscillator.type = note.type || 'square';
+                    oscillator.frequency.setValueAtTime(frequency, start);
+                    if (note.endFreq) oscillator.frequency.linearRampToValueAtTime(note.endFreq, start + note.duration);
+                    gain.gain.setValueAtTime(0.0001, start);
+                    gain.gain.linearRampToValueAtTime(note.volume || 0.025, start + 0.008);
+                    gain.gain.exponentialRampToValueAtTime(0.0001, start + note.duration);
+                    oscillator.connect(gain);
+                    gain.connect(context.destination);
+                    oscillator.start(start);
+                    oscillator.stop(start + note.duration + 0.01);
+                });
+            });
+        }
+
+        function playRetroSound(kind) {
+            const sounds = {
+                click: [{ freq: 760, duration: 0.035, type: 'square', volume: 0.018 }],
+                switch: [
+                    { freq: 640, duration: 0.045, type: 'triangle', volume: 0.025 },
+                    { freq: 880, duration: 0.06, delay: 0.045, type: 'triangle', volume: 0.025 }
+                ],
+                confirm: [
+                    { freq: 523, duration: 0.09, type: 'sine', volume: 0.035 },
+                    { freq: 659, duration: 0.09, delay: 0.08, type: 'sine', volume: 0.035 },
+                    { freq: 784, duration: 0.14, delay: 0.16, type: 'sine', volume: 0.035 }
+                ],
+                startup: [
+                    { freq: 523, duration: 0.16, type: 'sine', volume: 0.04 },
+                    { freq: 659, duration: 0.18, delay: 0.12, type: 'sine', volume: 0.04 },
+                    { freq: 784, duration: 0.28, delay: 0.25, type: 'sine', volume: 0.04 }
+                ]
+            };
+            playRetroTones(sounds[kind] || sounds.click);
+        }
+
+        function toggleRetroSound() {
+            retroSoundEnabled = !retroSoundEnabled;
+            const button = document.getElementById('retroSoundToggle');
+            button.setAttribute('aria-pressed', String(retroSoundEnabled));
+            button.textContent = retroSoundEnabled ? '🔊 Звуки: вкл.' : '🔇 Звуки: выкл.';
+            if (retroSoundEnabled) playRetroSound('startup');
+        }
+
+        function playRetroDialup() {
+            retroSoundEnabled = true;
+            const toggle = document.getElementById('retroSoundToggle');
+            toggle.setAttribute('aria-pressed', 'true');
+            toggle.textContent = '🔊 Звуки: вкл.';
+            playRetroTones([
+                { freq: [350, 440], duration: 0.35, type: 'sine', volume: 0.035 },
+                { freq: 1450, duration: 0.16, delay: 0.42, type: 'square', volume: 0.025 },
+                { freq: 2100, endFreq: 900, duration: 0.52, delay: 0.62, type: 'sawtooth', volume: 0.02 },
+                { freq: 1200, endFreq: 1900, duration: 0.48, delay: 1.12, type: 'square', volume: 0.022 },
+                { freq: 1650, duration: 0.12, delay: 1.66, type: 'square', volume: 0.025 },
+                { freq: 2200, duration: 0.12, delay: 1.82, type: 'square', volume: 0.025 },
+                { freq: 1750, duration: 0.16, delay: 1.98, type: 'triangle', volume: 0.025 }
+            ]);
+        }
+
+        document.addEventListener('click', event => {
+            if (!retroSoundEnabled) return;
+            const button = event.target.closest('button');
+            if (!button || button.id === 'retroSoundToggle' || button.id === 'dialupButton') return;
+            playRetroSound(button.classList.contains('view-tab') ? 'switch' : (button.classList.contains('equals') ? 'confirm' : 'click'));
+        });
 
         // Boot
         window.onload = () => {
