@@ -428,8 +428,15 @@
         .garage-credit { margin-top: 10px; font-size: 0.68rem !important; }
         .garage-credit a { color: var(--accent-cyan); }
         .garage-note { color: var(--text-secondary); font-size: 0.75rem; }
+        .garage-extra { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        .garage-extra-card { min-width: 0; }
+        .music-button { align-self: flex-start; margin-top: 12px; }
+        .music-player { width: 100%; aspect-ratio: 16 / 9; margin-top: 14px; background: #050505; border-radius: 8px; overflow: hidden; }
+        .music-player iframe { width: 100%; height: 100%; border: 0; }
+        .fiction-label { color: var(--accent-cyan) !important; font: 700 0.72rem 'JetBrains Mono', monospace; text-transform: uppercase; }
+        .bio-copy { color: var(--text-secondary); line-height: 1.7; }
         @media (max-width: 760px) {
-            .garage-hero, .garage-grid { grid-template-columns: 1fr; }
+            .garage-hero, .garage-grid, .garage-extra { grid-template-columns: 1fr; }
             .garage-copy { padding: 24px; }
             .garage-page, .diary-card, .pulse-demo-card { margin-left: 12px; margin-right: 12px; }
         }
@@ -713,6 +720,30 @@
                     <h3>VIN DIESEL</h3>
                     <p>Актёр на премьере Fast &amp; Furious в Лондоне.</p>
                     <p class="garage-credit">Фото: <a href="https://commons.wikimedia.org/wiki/File:VinDieselMarch09.jpg" target="_blank" rel="noreferrer">Andre Luis / Wikimedia Commons</a> · <a href="https://creativecommons.org/licenses/by-sa/3.0/" target="_blank" rel="noreferrer">CC BY-SA 3.0</a>.</p>
+                </div>
+            </article>
+        </div>
+        <div class="garage-extra">
+            <article class="card garage-extra-card">
+                <div class="card-header">
+                    <div class="card-title"><span>Nirvana · Smells Like Teen Spirit</span></div>
+                    <span class="card-tag">REPEAT</span>
+                </div>
+                <p class="garage-note">Официальный видеоклип Nirvana будет повторяться. Нажми кнопку, чтобы разрешить воспроизведение со звуком.</p>
+                <button class="view-tab music-button" id="musicButton" onclick="startNirvanaLoop()">Play on repeat</button>
+                <div class="music-player" id="nirvanaPlayer" aria-live="polite"></div>
+                <p class="garage-credit">Источник: <a href="https://www.nirvana.com/videos/" target="_blank" rel="noreferrer">официальная страница Nirvana Videos</a> · <a href="https://www.youtube.com/watch?v=hTWKbfoikeg" target="_blank" rel="noreferrer">официальный ролик на YouTube</a>.</p>
+            </article>
+            <article class="card garage-extra-card">
+                <div class="card-header">
+                    <div class="card-title"><span>Егор Комышев</span></div>
+                    <span class="card-tag">FICTION</span>
+                </div>
+                <p class="fiction-label">Полностью вымышленная биография</p>
+                <div class="bio-copy">
+                    <p>Егор Комышев вырос в придуманном городе Тихореченске, где по вечерам все дороги вели к маленькому гаражу за старым стадионом. В школе он больше всего любил физику, черчение и разбирать вещи, которые ещё работали.</p>
+                    <p>В семнадцать лет Егор собрал свой первый радиоприёмник из деталей будильника и старой магнитолы. Позже он стал ночным механиком: чинил японские седаны, слушал гранж и всегда держал в кармане запасной ключ на десять.</p>
+                    <p>По легенде этой выдуманной истории, его Toyota Mark II заводилась с пол-оборота даже после самой длинной ночи. Сам Егор говорил: «Если не заводится — сначала проверь, подключён ли аккумулятор».</p>
                 </div>
             </article>
         </div>
@@ -1122,6 +1153,14 @@
             document.getElementById('garageView').style.display = name === 'garage' ? 'flex' : 'none';
             document.querySelectorAll('.view-tab').forEach(tab => tab.classList.remove('active'));
             button.classList.add('active');
+        }
+
+        // YouTube supplies the official recording; the browser requires a click before audible playback.
+        function startNirvanaLoop() {
+            const videoId = 'hTWKbfoikeg';
+            const player = document.getElementById('nirvanaPlayer');
+            player.innerHTML = `<iframe title="Nirvana - Smells Like Teen Spirit" src="https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&loop=1&playlist=${videoId}&controls=1" allow="autoplay; encrypted-media; picture-in-picture" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>`;
+            document.getElementById('musicButton').textContent = 'Restart on repeat';
         }
 
         function drawEcg() {
