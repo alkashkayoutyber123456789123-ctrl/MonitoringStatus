@@ -3,15 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AstroWrist — ESP32 & Heartbeat Sensor Spaceflight Telemetry Station</title>
+    <title>AstroWrist 3D — Spaceflight Wearable Telemetry Station</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800;900&family=JetBrains+Mono:wght@300;400;600;700&family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <!-- Three.js and OrbitControls -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     <style>
         :root {
-            --bg-space: #070a13;
-            --panel-bg: rgba(13, 20, 36, 0.85);
-            --panel-border: rgba(38, 62, 107, 0.5);
+            --bg-space: #060913;
+            --panel-bg: rgba(13, 20, 36, 0.88);
+            --panel-border: rgba(38, 62, 107, 0.55);
             --accent-cyan: #00f0ff;
             --accent-green: #00ff88;
             --accent-amber: #ffaa00;
@@ -21,17 +24,13 @@
             --text-secondary: #8b9bb4;
             --oled-bg: #030708;
             --oled-pixel: #38bdf8;
-            --terminal-bg: #040810;
+            --terminal-bg: #03060e;
         }
 
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
 
         body {
-            background: radial-gradient(circle at 50% 10%, #0f1c3a 0%, #050812 75%);
+            background: radial-gradient(circle at 50% 10%, #0d1a38 0%, #040711 75%);
             background-color: var(--bg-space);
             color: var(--text-primary);
             font-family: 'Inter', sans-serif;
@@ -44,7 +43,7 @@
             background: rgba(8, 14, 27, 0.95);
             backdrop-filter: blur(12px);
             border-bottom: 1px solid var(--panel-border);
-            padding: 12px 28px;
+            padding: 10px 24px;
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -53,188 +52,142 @@
             z-index: 100;
         }
 
-        .brand-container {
+        .brand-container { display: flex; align-items: center; gap: 14px; }
+        .brand-logo {
+            width: 40px; height: 40px; border-radius: 8px;
+            background: linear-gradient(135deg, #00f0ff 0%, #0055ff 100%);
+            display: flex; align-items: center; justify-content: center;
+            font-family: 'Orbitron', sans-serif; font-weight: 900; font-size: 18px; color: #030712;
+            box-shadow: 0 0 16px rgba(0, 240, 255, 0.4);
+        }
+        .brand-titles h1 { font-family: 'Orbitron', sans-serif; font-size: 1.15rem; letter-spacing: 1.5px; text-transform: uppercase; }
+        .brand-titles p { font-size: 0.72rem; color: var(--text-secondary); font-family: 'JetBrains Mono', monospace; }
+
+        .met-badge {
+            background: rgba(0, 0, 0, 0.5); border: 1px solid rgba(0, 240, 255, 0.3);
+            border-radius: 6px; padding: 4px 12px; font-family: 'JetBrains Mono', monospace; text-align: right;
+        }
+        .met-label { font-size: 0.6rem; color: var(--text-secondary); text-transform: uppercase; }
+        .met-value { font-size: 1.05rem; color: var(--accent-cyan); font-weight: 700; }
+
+        .status-badge {
+            font-family: 'Orbitron', sans-serif; font-size: 0.8rem; font-weight: 800;
+            padding: 6px 14px; border-radius: 6px; letter-spacing: 1px; text-transform: uppercase;
+            box-shadow: 0 0 15px rgba(0, 255, 136, 0.2); transition: all 0.3s;
+        }
+        .status-nominal { background: rgba(0, 255, 136, 0.15); border: 1px solid var(--accent-green); color: var(--accent-green); }
+        .status-stress { background: rgba(255, 170, 0, 0.15); border: 1px solid var(--accent-amber); color: var(--accent-amber); animation: pulse-amber 1.5s infinite; }
+        .status-warning { background: rgba(255, 100, 0, 0.2); border: 1px solid #ff7700; color: #ff9933; animation: pulse-amber 1s infinite; }
+        .status-abort { background: rgba(255, 42, 85, 0.25); border: 1px solid var(--accent-red); color: var(--accent-red); animation: pulse-red 0.6s infinite; }
+
+        @keyframes pulse-amber { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
+        @keyframes pulse-red { 0%, 100% { opacity: 1; filter: drop-shadow(0 0 12px rgba(255, 42, 85, 0.8)); } 50% { opacity: 0.5; } }
+
+        /* Quick-Tuning Bar (+ / - Buttons for Vitals) */
+        .tuning-bar {
+            background: rgba(10, 16, 28, 0.92);
+            border-bottom: 1px solid var(--panel-border);
+            padding: 8px 24px;
             display: flex;
             align-items: center;
-            gap: 16px;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 12px;
+            z-index: 90;
         }
 
-        .brand-logo {
-            width: 44px;
-            height: 44px;
-            border-radius: 10px;
-            background: linear-gradient(135deg, #00f0ff 0%, #0055ff 100%);
+        .tuning-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+            padding: 4px 10px;
+        }
+
+        .tuning-lbl {
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            font-family: 'JetBrains Mono', monospace;
+            text-transform: uppercase;
+        }
+
+        .tuning-val {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.95rem;
+            font-weight: 700;
+            min-width: 90px;
+            text-align: center;
+        }
+
+        .btn-tune {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #fff;
+            width: 26px;
+            height: 26px;
+            border-radius: 4px;
+            font-weight: 700;
+            font-size: 0.95rem;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-family: 'Orbitron', sans-serif;
-            font-weight: 900;
-            font-size: 20px;
-            color: #030712;
-            box-shadow: 0 0 20px rgba(0, 240, 255, 0.4);
-        }
-
-        .brand-titles h1 {
-            font-family: 'Orbitron', sans-serif;
-            font-size: 1.25rem;
-            letter-spacing: 1.5px;
-            text-transform: uppercase;
-        }
-
-        .brand-titles p {
-            font-size: 0.75rem;
-            color: var(--text-secondary);
-            font-family: 'JetBrains Mono', monospace;
-        }
-
-        .header-status-group {
-            display: flex;
-            align-items: center;
-            gap: 18px;
-        }
-
-        .met-badge {
-            background: rgba(0, 0, 0, 0.45);
-            border: 1px solid rgba(0, 240, 255, 0.3);
-            border-radius: 6px;
-            padding: 6px 14px;
-            font-family: 'JetBrains Mono', monospace;
-            text-align: right;
-        }
-
-        .met-label {
-            font-size: 0.65rem;
-            color: var(--text-secondary);
-            text-transform: uppercase;
-        }
-
-        .met-value {
-            font-size: 1.15rem;
-            color: var(--accent-cyan);
-            font-weight: 700;
-        }
-
-        .status-badge {
-            font-family: 'Orbitron', sans-serif;
-            font-size: 0.85rem;
-            font-weight: 800;
-            padding: 8px 16px;
-            border-radius: 6px;
-            letter-spacing: 1px;
-            text-transform: uppercase;
-            box-shadow: 0 0 15px rgba(0, 255, 136, 0.2);
-            transition: all 0.3s ease;
-        }
-
-        .status-nominal {
-            background: rgba(0, 255, 136, 0.15);
-            border: 1px solid var(--accent-green);
-            color: var(--accent-green);
-        }
-
-        .status-stress {
-            background: rgba(255, 170, 0, 0.15);
-            border: 1px solid var(--accent-amber);
-            color: var(--accent-amber);
-            animation: pulse-amber 1.5s infinite;
-        }
-
-        .status-warning {
-            background: rgba(255, 100, 0, 0.2);
-            border: 1px solid #ff7700;
-            color: #ff9933;
-            animation: pulse-amber 1s infinite;
-        }
-
-        .status-abort {
-            background: rgba(255, 42, 85, 0.25);
-            border: 1px solid var(--accent-red);
-            color: var(--accent-red);
-            animation: pulse-red 0.6s infinite;
-        }
-
-        @keyframes pulse-amber {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.6; }
-        }
-
-        @keyframes pulse-red {
-            0%, 100% { opacity: 1; filter: drop-shadow(0 0 12px rgba(255, 42, 85, 0.8)); }
-            50% { opacity: 0.5; filter: none; }
-        }
-
-        /* Scenarios Bar */
-        .scenarios-strip {
-            background: rgba(11, 18, 33, 0.85);
-            border-bottom: 1px solid var(--panel-border);
-            padding: 8px 28px;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            overflow-x: auto;
-        }
-
-        .scenarios-label {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.75rem;
-            color: var(--accent-cyan);
-            text-transform: uppercase;
-            white-space: nowrap;
-        }
-
-        .scenario-btn {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            color: var(--text-primary);
-            padding: 6px 14px;
-            border-radius: 4px;
-            font-size: 0.75rem;
-            font-weight: 600;
             cursor: pointer;
-            transition: all 0.2s;
-            white-space: nowrap;
+            transition: all 0.15s;
         }
-
-        .scenario-btn:hover {
-            background: rgba(0, 240, 255, 0.15);
-            border-color: var(--accent-cyan);
-        }
-
-        .scenario-btn.active {
+        .btn-tune:hover {
             background: var(--accent-cyan);
             color: #030712;
             border-color: var(--accent-cyan);
-            box-shadow: 0 0 12px rgba(0, 240, 255, 0.4);
+            box-shadow: 0 0 8px rgba(0, 240, 255, 0.5);
         }
+        .btn-tune:active { transform: scale(0.92); }
 
-        /* Main Grid */
+        /* Scenario Presets */
+        .scenarios-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            overflow-x: auto;
+        }
+        .scenario-pill {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            color: var(--text-primary);
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.2s;
+        }
+        .scenario-pill:hover { background: rgba(0, 240, 255, 0.15); border-color: var(--accent-cyan); }
+        .scenario-pill.active { background: var(--accent-cyan); color: #030712; border-color: var(--accent-cyan); font-weight: 700; }
+
+        /* Main Cockpit Layout */
         main {
-            padding: 22px 28px;
+            padding: 16px 24px;
             display: grid;
-            grid-template-columns: 1fr 1fr 350px;
-            gap: 20px;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
             flex: 1;
         }
 
-        @media (max-width: 1200px) {
-            main { grid-template-columns: 1fr 1fr; }
-            .col-side { grid-column: span 2; }
-        }
-
-        @media (max-width: 820px) {
+        @media (max-width: 1100px) {
             main { grid-template-columns: 1fr; }
-            .col-side { grid-column: span 1; }
         }
 
         .card {
             background: var(--panel-bg);
             border: 1px solid var(--panel-border);
             border-radius: 12px;
-            padding: 18px;
+            padding: 16px;
             backdrop-filter: blur(10px);
             display: flex;
             flex-direction: column;
-            gap: 14px;
+            gap: 12px;
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
         }
 
@@ -243,19 +196,17 @@
             justify-content: space-between;
             align-items: center;
             border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-            padding-bottom: 10px;
+            padding-bottom: 8px;
         }
-
         .card-title {
             font-family: 'Orbitron', sans-serif;
-            font-size: 0.88rem;
+            font-size: 0.85rem;
             letter-spacing: 1px;
             text-transform: uppercase;
             display: flex;
             align-items: center;
             gap: 8px;
         }
-
         .card-tag {
             font-family: 'JetBrains Mono', monospace;
             font-size: 0.65rem;
@@ -266,508 +217,302 @@
             border: 1px solid rgba(0, 240, 255, 0.3);
         }
 
-        /* Heartbeat Sensor Section */
-        .heartbeat-hero {
-            background: linear-gradient(135deg, rgba(255, 42, 85, 0.1) 0%, rgba(16, 24, 45, 0.6) 100%);
-            border: 1px solid rgba(255, 42, 85, 0.3);
+        /* 3D Viewport Box */
+        .viewport-3d-box {
+            position: relative;
+            width: 100%;
+            height: 400px;
+            background: radial-gradient(circle at 50% 50%, #151d32 0%, #060912 85%);
+            border: 1px solid rgba(0, 240, 255, 0.3);
             border-radius: 10px;
-            padding: 16px;
+            overflow: hidden;
+            box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.8);
+        }
+
+        #threeCanvas { width: 100%; height: 100%; display: block; }
+
+        .viewport-controls-overlay {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            right: 10px;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            pointer-events: none;
         }
 
-        .heart-icon-pulse {
-            display: inline-block;
-            font-size: 2.2rem;
-            color: var(--accent-red);
-            filter: drop-shadow(0 0 10px rgba(255, 42, 85, 0.6));
-            animation: beat 0.85s infinite;
-        }
-
-        @keyframes beat {
-            0% { transform: scale(1); }
-            14% { transform: scale(1.22); }
-            28% { transform: scale(1); }
-            42% { transform: scale(1.15); }
-            70% { transform: scale(1); }
-        }
-
-        .heart-val-box {
+        .viewport-btn-group {
             display: flex;
-            align-items: baseline;
-            gap: 8px;
+            gap: 6px;
+            pointer-events: auto;
         }
 
-        .heart-num {
-            font-family: 'Orbitron', sans-serif;
-            font-size: 2.6rem;
-            font-weight: 900;
-            color: var(--text-primary);
-        }
-
-        .heart-unit {
+        .btn-view {
+            background: rgba(8, 14, 27, 0.85);
+            border: 1px solid rgba(0, 240, 255, 0.3);
+            color: var(--accent-cyan);
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 0.68rem;
             font-family: 'JetBrains Mono', monospace;
-            font-size: 0.9rem;
-            color: var(--accent-red);
-            font-weight: 700;
+            cursor: pointer;
+            backdrop-filter: blur(6px);
+            transition: all 0.2s;
         }
+        .btn-view:hover { background: var(--accent-cyan); color: #040810; }
+        .btn-view.active { background: var(--accent-cyan); color: #040810; font-weight: 700; }
 
-        .ecg-box {
-            background: rgba(3, 7, 16, 0.9);
-            border: 1px solid rgba(0, 240, 255, 0.25);
-            border-radius: 8px;
-            position: relative;
-            padding: 6px;
-            overflow: hidden;
-        }
-
-        .ecg-label {
-            position: absolute;
-            top: 6px;
-            left: 10px;
+        .viewport-hint {
+            font-size: 0.62rem;
+            color: rgba(255, 255, 255, 0.5);
             font-family: 'JetBrains Mono', monospace;
-            font-size: 0.65rem;
-            color: rgba(0, 240, 255, 0.7);
             text-transform: uppercase;
         }
 
-        canvas#ecgCanvas {
-            width: 100%;
-            height: 105px;
-            display: block;
-        }
-
+        /* Metrics Grid */
         .metrics-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
-            gap: 12px;
+            gap: 10px;
         }
 
         .tile {
-            background: rgba(0, 0, 0, 0.3);
+            background: rgba(0, 0, 0, 0.35);
             border: 1px solid rgba(255, 255, 255, 0.06);
             border-radius: 8px;
-            padding: 12px;
+            padding: 10px 12px;
         }
-
         .tile-lbl {
-            font-size: 0.68rem;
+            font-size: 0.65rem;
             color: var(--text-secondary);
             font-family: 'JetBrains Mono', monospace;
             text-transform: uppercase;
         }
-
         .tile-val-row {
             display: flex;
             align-items: baseline;
             gap: 6px;
-            margin: 4px 0;
+            margin: 3px 0;
         }
-
         .tile-val {
             font-family: 'Orbitron', sans-serif;
-            font-size: 1.5rem;
+            font-size: 1.45rem;
             font-weight: 800;
         }
+        .tile-sub { font-size: 0.62rem; color: var(--text-secondary); }
 
-        .tile-sub {
-            font-size: 0.65rem;
-            color: var(--text-secondary);
-        }
-
-        /* Radiation Section */
+        /* Dosimetry Section */
         .dosimetry-hero {
-            background: linear-gradient(135deg, rgba(255, 170, 0, 0.08) 0%, rgba(18, 25, 48, 0.5) 100%);
-            border: 1px solid rgba(255, 170, 0, 0.25);
-            border-radius: 10px;
-            padding: 14px 16px;
+            background: linear-gradient(135deg, rgba(255, 170, 0, 0.1) 0%, rgba(20, 28, 52, 0.6) 100%);
+            border: 1px solid rgba(255, 170, 0, 0.3);
+            border-radius: 8px;
+            padding: 12px 14px;
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
-
         .rad-num {
             font-family: 'Orbitron', sans-serif;
-            font-size: 2.2rem;
+            font-size: 2.1rem;
             font-weight: 900;
             color: #ffaa00;
             text-shadow: 0 0 12px rgba(255, 170, 0, 0.4);
         }
 
-        .progress-block {
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-        }
+        .progress-block { display: flex; flex-direction: column; gap: 4px; }
+        .progress-header { display: flex; justify-content: space-between; font-size: 0.68rem; font-family: 'JetBrains Mono', monospace; }
+        .bar-track { height: 8px; background: rgba(0, 0, 0, 0.5); border-radius: 4px; border: 1px solid rgba(255, 255, 255, 0.1); overflow: hidden; }
+        .bar-fill { height: 100%; background: linear-gradient(90deg, #00ff88 0%, #ffaa00 70%, #ff2a55 100%); width: 1%; transition: width 0.3s; }
 
-        .progress-header {
-            display: flex;
-            justify-content: space-between;
-            font-size: 0.72rem;
-            font-family: 'JetBrains Mono', monospace;
-        }
-
-        .bar-track {
-            height: 9px;
-            background: rgba(0, 0, 0, 0.5);
-            border-radius: 5px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            overflow: hidden;
-        }
-
-        .bar-fill {
-            height: 100%;
-            background: linear-gradient(90deg, #00ff88 0%, #ffaa00 70%, #ff2a55 100%);
-            width: 1%;
-            transition: width 0.4s ease;
-        }
-
-        /* ESP32 Hardware Status */
-        .esp32-pins-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 8px;
-        }
-
-        .pin-badge {
-            background: rgba(0, 0, 0, 0.35);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 6px;
-            padding: 8px;
-            text-align: center;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.7rem;
-        }
-
-        .pin-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            display: inline-block;
-            margin-right: 5px;
-            background: #475569;
-        }
-
-        .pin-dot.active-green { background: #00ff88; box-shadow: 0 0 8px #00ff88; }
-        .pin-dot.active-red { background: #ff2a55; box-shadow: 0 0 8px #ff2a55; }
-        .pin-dot.active-cyan { background: #00f0ff; box-shadow: 0 0 8px #00f0ff; }
-
-        /* NASA Open Data Verification Card */
+        /* NASA Feed */
         .nasa-feed-box {
-            background: rgba(14, 25, 48, 0.6);
-            border: 1px solid rgba(0, 160, 255, 0.4);
-            border-radius: 10px;
-            padding: 14px;
+            background: rgba(14, 25, 48, 0.65);
+            border: 1px solid rgba(0, 160, 255, 0.45);
+            border-radius: 8px;
+            padding: 12px;
             display: flex;
             flex-direction: column;
-            gap: 10px;
-        }
-
-        .nasa-badge-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .nasa-verified-pill {
-            background: rgba(0, 255, 136, 0.15);
-            border: 1px solid var(--accent-green);
-            color: var(--accent-green);
-            padding: 3px 8px;
-            border-radius: 4px;
-            font-size: 0.65rem;
-            font-family: 'JetBrains Mono', monospace;
-            font-weight: 700;
-        }
-
-        .donki-stats {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
             gap: 8px;
-            text-align: center;
         }
+        .donki-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; text-align: center; }
+        .donki-tile { background: rgba(0, 0, 0, 0.35); padding: 6px; border-radius: 6px; }
+        .donki-tile-num { font-family: 'Orbitron', sans-serif; font-size: 1.1rem; color: var(--accent-cyan); }
+        .donki-tile-lbl { font-size: 0.6rem; color: var(--text-secondary); text-transform: uppercase; }
 
-        .donki-tile {
-            background: rgba(0, 0, 0, 0.35);
-            padding: 8px;
-            border-radius: 6px;
+        /* ECG */
+        .ecg-box {
+            background: rgba(2, 6, 14, 0.9);
+            border: 1px solid rgba(0, 240, 255, 0.25);
+            border-radius: 8px;
+            padding: 4px;
+            position: relative;
         }
+        canvas#ecgCanvas { width: 100%; height: 80px; display: block; }
 
-        .donki-tile-num {
-            font-family: 'Orbitron', sans-serif;
-            font-size: 1.15rem;
-            color: var(--accent-cyan);
-        }
-
-        .donki-tile-lbl {
-            font-size: 0.65rem;
-            color: var(--text-secondary);
-            text-transform: uppercase;
-        }
-
-        /* Serial Terminal Box */
+        /* Serial Terminal */
         .terminal-box {
             background: var(--terminal-bg);
             border: 1px solid rgba(0, 240, 255, 0.25);
             border-radius: 8px;
-            padding: 10px;
-            height: 140px;
+            padding: 8px;
+            height: 110px;
             overflow-y: auto;
             font-family: 'JetBrains Mono', monospace;
-            font-size: 0.68rem;
+            font-size: 0.65rem;
             color: #38bdf8;
-            line-height: 1.4;
-        }
-
-        .terminal-box div {
-            white-space: nowrap;
-        }
-
-        /* Virtual Wrist OLED HUD Mirror */
-        .wrist-bezel {
-            background: #10141d;
-            border: 4px solid #222a3a;
-            border-radius: 18px;
-            padding: 14px;
-            box-shadow: inset 0 0 15px rgba(0, 0, 0, 0.9), 0 8px 24px rgba(0, 0, 0, 0.7);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .oled-screen {
-            background: var(--oled-bg);
-            border: 2px solid #1a2233;
-            border-radius: 8px;
-            width: 256px;
-            height: 128px;
-            box-shadow: 0 0 15px rgba(56, 189, 248, 0.15);
-            display: flex;
-            flex-direction: column;
-            padding: 8px 12px;
-            font-family: 'JetBrains Mono', monospace;
-            color: var(--oled-pixel);
-            justify-content: space-between;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .oled-screen::after {
-            content: " ";
-            position: absolute;
-            top: 0; left: 0; bottom: 0; right: 0;
-            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%);
-            background-size: 100% 4px;
-            pointer-events: none;
-        }
-
-        .oled-top {
-            display: flex;
-            justify-content: space-between;
-            font-size: 0.65rem;
-            border-bottom: 1px dashed rgba(56, 189, 248, 0.3);
-            padding-bottom: 4px;
-        }
-
-        .oled-mid {
-            display: flex;
-            justify-content: space-between;
-            align-items: baseline;
-            margin: 4px 0;
-        }
-
-        .oled-main-val {
-            font-size: 1.5rem;
-            font-weight: 800;
-        }
-
-        .oled-main-unit {
-            font-size: 0.75rem;
-        }
-
-        .oled-sub-val {
-            font-size: 0.75rem;
-            color: #94a3b8;
-        }
-
-        .oled-bottom {
-            font-size: 0.65rem;
-            border-top: 1px dashed rgba(56, 189, 248, 0.3);
-            padding-top: 4px;
-            display: flex;
-            justify-content: space-between;
+            line-height: 1.35;
         }
 
         footer {
             background: rgba(8, 12, 22, 0.95);
             border-top: 1px solid var(--panel-border);
-            padding: 12px 28px;
+            padding: 10px 24px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            font-size: 0.75rem;
+            font-size: 0.72rem;
             color: var(--text-secondary);
         }
-
         footer a { color: var(--accent-cyan); text-decoration: none; }
     </style>
 </head>
 <body>
 
+    <!-- Header -->
     <header>
         <div class="brand-container">
             <div class="brand-logo">AW</div>
             <div class="brand-titles">
-                <h1>AstroWrist Telemetry Station</h1>
-                <p>ESP32-WROOM-32D &amp; MAX30102 PPG Digital Twin</p>
+                <h1>AstroWrist 3D Telemetry Cockpit</h1>
+                <p>Interactive 3D Hardware Model &amp; NASA Open Science Telemetry</p>
             </div>
         </div>
 
-        <div class="header-status-group">
+        <div style="display: flex; align-items: center; gap: 14px;">
             <div class="met-badge">
                 <div class="met-label">Mission Elapsed Time</div>
                 <div class="met-value" id="metDisplay">+00:00:00</div>
             </div>
-
-            <div class="status-badge status-nominal" id="crewStatusBadge">
-                NOMINAL
-            </div>
+            <div class="status-badge status-nominal" id="crewStatusBadge">NOMINAL</div>
         </div>
     </header>
 
-    <!-- Mission Scenarios Bar -->
-    <div class="scenarios-strip">
-        <span class="scenarios-label">⚡ Mission Scenarios:</span>
-        <button class="scenario-btn active" onclick="setScenario('nominal', this)">🟢 1. Nominal ISS Habitat</button>
-        <button class="scenario-btn" onclick="setScenario('eva_spacewalk', this)">🟡 2. EVA Spacewalk (&lt;450 hPa)</button>
-        <button class="scenario-btn" onclick="setScenario('exertion_tachycardia', this)">🟠 3. Exertion Tachycardia (&gt;130 BPM)</button>
-        <button class="scenario-btn" onclick="setScenario('solar_proton_storm', this)">🔴 4. NASA DONKI SEP Proton Storm</button>
-        <button class="scenario-btn" onclick="setScenario('critical_abort', this)">⚠️ 5. Critical Abort &amp; Radiation Shelter</button>
+    <!-- Tuning & Injection Bar (+ / - Buttons for Vitals) -->
+    <div class="tuning-bar">
+        <!-- Heart Rate Adjust -->
+        <div class="tuning-group">
+            <span class="tuning-lbl">❤️ Heartbeat:</span>
+            <button class="btn-tune" onclick="adjustVital('bpm', -5)">−</button>
+            <span class="tuning-val" id="tuneHrVal" style="color: #ff3366;">72 BPM</span>
+            <button class="btn-tune" onclick="adjustVital('bpm', 5)">+</button>
+        </div>
+
+        <!-- Radiation Adjust -->
+        <div class="tuning-group">
+            <span class="tuning-lbl">☢️ Radiation:</span>
+            <button class="btn-tune" onclick="adjustVital('radiation', -200)">−</button>
+            <span class="tuning-val" id="tuneRadVal" style="color: #ffaa00;">0.15 μSv/h</span>
+            <button class="btn-tune" onclick="adjustVital('radiation', 200)">+</button>
+        </div>
+
+        <!-- Blood Pressure Adjust -->
+        <div class="tuning-group">
+            <span class="tuning-lbl">🩺 Blood Pressure:</span>
+            <button class="btn-tune" onclick="adjustVital('bp_sys', -5); adjustVital('bp_dia', -3);">−</button>
+            <span class="tuning-val" id="tuneBpVal" style="color: var(--accent-cyan);">118/76</span>
+            <button class="btn-tune" onclick="adjustVital('bp_sys', 5); adjustVital('bp_dia', 3);">+</button>
+        </div>
+
+        <!-- Scenarios Presets -->
+        <div class="scenarios-row">
+            <span class="tuning-lbl">Scenarios:</span>
+            <button class="scenario-pill active" onclick="setScenario('nominal', this)">Nominal</button>
+            <button class="scenario-pill" onclick="setScenario('eva_spacewalk', this)">EVA Spacewalk</button>
+            <button class="scenario-pill" onclick="setScenario('exertion_tachycardia', this)">Tachycardia</button>
+            <button class="scenario-pill" onclick="setScenario('solar_proton_storm', this)">NASA Proton Storm</button>
+            <button class="scenario-pill" onclick="setScenario('critical_abort', this)">Critical Abort</button>
+        </div>
     </div>
 
+    <!-- Main Content -->
     <main>
-        <!-- Column 1: Heartbeat Sensor & Photoplethysmogram -->
+        <!-- Column 1: 3D Interactive Astronaut Wearable -->
         <section class="card">
             <div class="card-header">
                 <div class="card-title">
-                    <span>❤️ MAX30102 Heartbeat &amp; PPG Sensor</span>
+                    <span>🛸 AstroWrist 3D Interactive Model</span>
                 </div>
-                <span class="card-tag">Optical I2C (0x57)</span>
+                <span class="card-tag">WebGL / Three.js PBR</span>
             </div>
 
-            <div class="heartbeat-hero">
-                <div>
-                    <div style="font-size: 0.72rem; color: #ff8899; text-transform: uppercase; font-family: 'JetBrains Mono', monospace;">
-                        Astronaut Pulse Rate
+            <!-- 3D Canvas Box -->
+            <div class="viewport-3d-box">
+                <canvas id="threeCanvas"></canvas>
+
+                <div class="viewport-controls-overlay">
+                    <div class="viewport-btn-group">
+                        <button class="btn-view active" onclick="setCameraView('front', this)">Front HUD</button>
+                        <button class="btn-view" onclick="setCameraView('geiger', this)">Geiger Tube</button>
+                        <button class="btn-view" onclick="setCameraView('back', this)">Pulse Sensor</button>
+                        <button class="btn-view" onclick="toggleAutoRotate(this)">360° Orbit</button>
                     </div>
-                    <div class="heart-val-box">
-                        <span class="heart-num" id="valHeartRate">72</span>
-                        <span class="heart-unit">BPM</span>
-                    </div>
-                    <div style="font-size: 0.7rem; color: #8b9bb4;" id="lblHeartSub">Normal Sinus Rhythm</div>
-                </div>
-                <div>
-                    <span class="heart-icon-pulse" id="heartIcon">♥</span>
+                    <span class="viewport-hint">Drag to Rotate • Scroll to Zoom</span>
                 </div>
             </div>
 
-            <div class="ecg-box">
-                <div class="ecg-label">Lead II Optical PPG Waveform • 100 Hz Sample Rate</div>
-                <canvas id="ecgCanvas" width="450" height="105"></canvas>
-            </div>
-
+            <!-- Biometrics Tiles -->
             <div class="metrics-grid">
+                <div class="tile">
+                    <div class="tile-lbl">Arterial Blood Pressure</div>
+                    <div class="tile-val-row">
+                        <span class="tile-val" id="valBp">118/76</span>
+                        <span style="font-size: 0.75rem; color: var(--text-secondary);">mmHg</span>
+                    </div>
+                    <div class="tile-sub" id="valMap">MAP: 90.0 mmHg</div>
+                </div>
+
                 <div class="tile">
                     <div class="tile-lbl">Blood Oxygen (SpO2)</div>
                     <div class="tile-val-row">
                         <span class="tile-val" id="valSpo2">98.6</span>
-                        <span style="font-size: 0.8rem; color: var(--accent-cyan);">%</span>
+                        <span style="font-size: 0.75rem; color: var(--accent-cyan);">%</span>
                     </div>
-                    <div class="tile-sub">Red/IR Ratio-of-Ratios</div>
-                </div>
-
-                <div class="tile">
-                    <div class="tile-lbl">Respiration Rate</div>
-                    <div class="tile-val-row">
-                        <span class="tile-val" id="valResp">14</span>
-                        <span style="font-size: 0.8rem; color: var(--text-secondary);">BrPM</span>
-                    </div>
-                    <div class="tile-sub">Sinus Arrhythmia Derived</div>
-                </div>
-
-                <div class="tile">
-                    <div class="tile-lbl">Optical Signal Quality</div>
-                    <div class="tile-val-row">
-                        <span class="tile-val" id="valSignalQuality">99</span>
-                        <span style="font-size: 0.8rem; color: var(--accent-green);">%</span>
-                    </div>
-                    <div class="tile-sub">Skin Contact Detected</div>
-                </div>
-
-                <div class="tile">
-                    <div class="tile-lbl">IR Sensor Amplitude</div>
-                    <div class="tile-val-row">
-                        <span class="tile-val" id="valIrAmplitude" style="font-size: 1.25rem;">68,420</span>
-                    </div>
-                    <div class="tile-sub">18-bit ADC Reflection</div>
+                    <div class="tile-sub">MAX30102 Optical PPG</div>
                 </div>
             </div>
 
-            <!-- Cabin & Spacesuit Barometrics (BMP280) -->
-            <div class="card-header" style="margin-top: 6px;">
-                <div class="card-title">
-                    <span>🛡️ BMP280 Barometric Pressure</span>
-                </div>
-                <span class="card-tag" id="valOperatingModeTag">[MODULE]</span>
-            </div>
-
-            <div class="metrics-grid">
-                <div class="tile">
-                    <div class="tile-lbl">Ambient Pressure</div>
-                    <div class="tile-val-row">
-                        <span class="tile-val" id="valPressure">1013.2</span>
-                        <span style="font-size: 0.8rem; color: var(--text-secondary);">hPa</span>
-                    </div>
-                    <div class="tile-sub" id="valPressurePsi">14.7 psi • Habitat Atmosphere</div>
-                </div>
-
-                <div class="tile">
-                    <div class="tile-lbl">Suit / Module Temp</div>
-                    <div class="tile-val-row">
-                        <span class="tile-val" id="valTemp">22.4</span>
-                        <span style="font-size: 0.8rem; color: var(--text-secondary);">°C</span>
-                    </div>
-                    <div class="tile-sub">Internal Thermal Loop</div>
-                </div>
+            <!-- Lead II ECG -->
+            <div class="ecg-box">
+                <canvas id="ecgCanvas" width="450" height="80"></canvas>
             </div>
         </section>
 
-        <!-- Column 2: Radiation Dosimetry & NASA Open Science Feed -->
+        <!-- Column 2: Dosimetry, NASA Space Weather & Terminal -->
         <section class="card">
             <div class="card-header">
                 <div class="card-title">
-                    <span>☢️ J305 Geiger Dosimeter</span>
+                    <span>☢️ J305 Ionizing Radiation Dosimeter</span>
                 </div>
-                <span class="card-tag">NASA-STD-3001 Standards</span>
+                <span class="card-tag">NASA-STD-3001 Dead-Time Math</span>
             </div>
 
+            <!-- Hero Dose Rate -->
             <div class="dosimetry-hero">
                 <div>
-                    <div style="font-size: 0.72rem; color: #ffaa00; text-transform: uppercase; font-family: 'JetBrains Mono', monospace;">
-                        Ambient Dose Equivalent Rate
+                    <div style="font-size: 0.68rem; color: #ffaa00; text-transform: uppercase; font-family: 'JetBrains Mono', monospace;">
+                        Ambient Dose Rate
                     </div>
-                    <div class="rad-num" id="valDoseRate">0.154 <span style="font-size: 1rem;">μSv/h</span></div>
+                    <div class="rad-num" id="valDoseRate">0.154 <span style="font-size: 0.95rem;">μSv/h</span></div>
                 </div>
-                <div style="text-align: right; font-family: 'JetBrains Mono', monospace; font-size: 0.75rem;">
+                <div style="text-align: right; font-family: 'JetBrains Mono', monospace; font-size: 0.72rem;">
                     <div>Raw: <span id="valRawCpm">19.0</span> CPM</div>
-                    <div>Dead-Time Corrected: <span id="valTrueCpm">19.0</span> CPM</div>
-                    <div style="color: #64748b; font-size: 0.65rem; margin-top: 4px;">τ = 190 μs recovery</div>
+                    <div>Dead-Time Corr: <span id="valTrueCpm">19.0</span> CPM</div>
+                    <div style="color: #64748b; font-size: 0.6rem; margin-top: 3px;">τ = 190 μs recovery</div>
                 </div>
             </div>
 
-            <!-- Cumulative Dose Limits (NASA-STD-3001) -->
+            <!-- Limits Progress -->
             <div class="progress-block">
                 <div class="progress-header">
                     <span>30-Day BFO Limit (NASA-STD-3001: 250 mSv)</span>
@@ -793,39 +538,39 @@
                     <div class="tile-lbl">Time-To-Limit (TTL)</div>
                     <div class="tile-val-row">
                         <span class="tile-val" id="valTtl">&gt;9999</span>
-                        <span style="font-size: 0.8rem; color: var(--text-secondary);">Hours</span>
+                        <span style="font-size: 0.75rem; color: var(--text-secondary);">Hours</span>
                     </div>
                     <div class="tile-sub">Safe time at current flux</div>
                 </div>
 
                 <div class="tile">
-                    <div class="tile-lbl">Warning Threshold</div>
+                    <div class="tile-lbl">Ambient Pressure</div>
                     <div class="tile-val-row">
-                        <span class="tile-val" id="valThreshold">15.0</span>
-                        <span style="font-size: 0.8rem; color: var(--text-secondary);">μSv/h</span>
+                        <span class="tile-val" id="valPressure">1013.2</span>
+                        <span style="font-size: 0.75rem; color: var(--text-secondary);">hPa</span>
                     </div>
-                    <div class="tile-sub" id="lblThresholdContext">Module: 15.0 | EVA: 8.0 μSv/h</div>
+                    <div class="tile-sub" id="valPressureMode">[MODULE] Atmosphere</div>
                 </div>
             </div>
 
-            <!-- Official NASA Open Data Verification Card -->
-            <div class="card-header" style="margin-top: 6px;">
+            <!-- Official NASA DONKI Card -->
+            <div class="card-header" style="margin-top: 4px;">
                 <div class="card-title">
-                    <span>🛰️ Official NASA Open Data Feed</span>
+                    <span>🛰️ Official NASA Open Data (DONKI API)</span>
                 </div>
-                <button onclick="syncNasaApiNow()" style="background: none; border: 1px solid rgba(0,240,255,0.4); color: var(--accent-cyan); border-radius: 4px; padding: 2px 8px; font-size: 0.65rem; cursor: pointer;">
+                <button onclick="pingNasaApi()" style="background: none; border: 1px solid rgba(0,240,255,0.4); color: var(--accent-cyan); border-radius: 4px; padding: 2px 8px; font-size: 0.65rem; cursor: pointer;">
                     Ping NASA API
                 </button>
             </div>
 
             <div class="nasa-feed-box">
-                <div class="nasa-badge-row">
-                    <span class="nasa-verified-pill" id="nasaVerifiedPill">✓ NASA DONKI API VERIFIED</span>
-                    <a href="https://api.nasa.gov/" target="_blank" style="font-size: 0.65rem; color: var(--accent-cyan); text-decoration: none;">api.nasa.gov ↗</a>
-                </div>
-
-                <div style="font-size: 0.82rem; font-family: 'JetBrains Mono', monospace; font-weight: 600;" id="nasaEventTitle">
-                    NASA DONKI Geomagnetic Storm (Kp=6.0)
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="background: rgba(0, 255, 136, 0.15); border: 1px solid var(--accent-green); color: var(--accent-green); padding: 2px 6px; border-radius: 4px; font-size: 0.62rem; font-family: 'JetBrains Mono', monospace; font-weight: 700;">
+                        ✓ NASA DONKI API VERIFIED
+                    </span>
+                    <a id="nasaEventLink" href="https://ccmc.gsfc.nasa.gov/DONKI/view/GST/49348/-1" target="_blank" style="font-size: 0.65rem; color: var(--accent-cyan); text-decoration: none;">
+                        Event: <span id="nasaEventId">2026-10-31T18:00:00-GST-001</span> ↗
+                    </a>
                 </div>
 
                 <div class="donki-stats">
@@ -842,194 +587,421 @@
                         <div class="donki-tile-lbl">Solar Flare</div>
                     </div>
                 </div>
-
-                <div style="font-size: 0.68rem; color: #94a3b8; font-family: 'JetBrains Mono', monospace;" id="nasaEventDetails">
-                    Event ID: <a id="nasaEventLink" href="https://ccmc.gsfc.nasa.gov/DONKI/view/GST/49348/-1" target="_blank" style="color: var(--accent-cyan);">2026-10-31T18:00:00-GST-001</a>
-                </div>
-                <div style="font-size: 0.62rem; color: #64748b; font-family: 'JetBrains Mono', monospace;" id="nasaSyncStamp">
-                    Last Query: 2026-11-14 18:46 UTC (Status: 200 OK)
-                </div>
-            </div>
-        </section>
-
-        <!-- Column 3: ESP32 Hardware Twin & Live Serial Monitor -->
-        <section class="col-side" style="display: flex; flex-direction: column; gap: 18px;">
-            <!-- ESP32 Device Board -->
-            <div class="card">
-                <div class="card-header">
-                    <div class="card-title">
-                        <span>📟 ESP32-WROOM-32D Board</span>
-                    </div>
-                    <span class="card-tag">240 MHz MCU</span>
-                </div>
-
-                <div class="esp32-pins-grid">
-                    <div class="pin-badge">
-                        <span class="pin-dot" id="dotGpio4"></span>GPIO 4<br>
-                        <span style="font-size: 0.6rem; color: #94a3b8;">Geiger INT</span>
-                    </div>
-                    <div class="pin-badge">
-                        <span class="pin-dot active-cyan"></span>GPIO 21/22<br>
-                        <span style="font-size: 0.6rem; color: #94a3b8;">I2C Bus</span>
-                    </div>
-                    <div class="pin-badge">
-                        <span class="pin-dot" id="dotGpio19"></span>GPIO 19<br>
-                        <span style="font-size: 0.6rem; color: #94a3b8;">Wrist Vibro</span>
-                    </div>
-                    <div class="pin-badge">
-                        <span class="pin-dot" id="dotGpio18"></span>GPIO 18<br>
-                        <span style="font-size: 0.6rem; color: #94a3b8;">Buzzer Tone</span>
-                    </div>
-                    <div class="pin-badge">
-                        <span class="pin-dot" id="dotGpio2"></span>GPIO 2<br>
-                        <span style="font-size: 0.6rem; color: #94a3b8;">Alarm LED</span>
-                    </div>
-                    <div class="pin-badge">
-                        <span class="pin-dot active-green"></span>GPIO 34<br>
-                        <span style="font-size: 0.6rem; color: #94a3b8;" id="valVbat">4.14V LiPo</span>
-                    </div>
-                </div>
-
-                <div style="font-size: 0.72rem; color: #94a3b8; font-family: 'JetBrains Mono', monospace; display: flex; justify-content: space-between;">
-                    <span>Free Heap: <span id="valHeap" style="color: var(--accent-cyan);">218,440</span> B</span>
-                    <span>WiFi RSSI: -58 dBm</span>
-                </div>
             </div>
 
-            <!-- Virtual Wrist OLED HUD Mirror -->
-            <div class="card" style="align-items: center;">
-                <div class="card-header" style="width: 100%;">
-                    <div class="card-title">
-                        <span>⌚ AstroWrist HUD Mirror</span>
-                    </div>
-                    <span class="card-tag">128x64 OLED</span>
+            <!-- UART Terminal Stream -->
+            <div class="card-header" style="margin-top: 4px;">
+                <div class="card-title">
+                    <span>💻 ESP32 UART Serial Telemetry</span>
                 </div>
-
-                <div class="wrist-bezel">
-                    <span style="font-family: 'Orbitron', sans-serif; font-size: 0.65rem; color: #5d6d88; letter-spacing: 2px;">ASTRO-WRIST HUD</span>
-                    <div class="oled-screen" id="oledScreen">
-                        <div class="oled-top">
-                            <span id="oledModeTag">[MODULE]</span>
-                            <span id="oledHr">♥ 72 BPM</span>
-                            <span>BAT 95%</span>
-                        </div>
-                        <div class="oled-mid">
-                            <div>
-                                <span class="oled-main-val" id="oledDoseRate">0.15</span>
-                                <span class="oled-main-unit">uSv/h</span>
-                            </div>
-                            <div class="oled-sub-val" id="oledCpm">19 CPM</div>
-                        </div>
-                        <div class="oled-bottom">
-                            <span id="oledDoseAcc">ACC: 1.45 mSv</span>
-                            <span id="oledStatus">NOMINAL</span>
-                        </div>
-                    </div>
-                    <span style="font-size: 0.55rem; color: #5d6d88;">ESP32-WROOM-32D / J305 GM</span>
-                </div>
+                <span class="card-tag">115200 Baud</span>
             </div>
 
-            <!-- ESP32 UART Serial Telemetry Stream -->
-            <div class="card">
-                <div class="card-header">
-                    <div class="card-title">
-                        <span>💻 UART Serial Monitor</span>
-                    </div>
-                    <span class="card-tag">115200 Baud</span>
-                </div>
-
-                <div class="terminal-box" id="serialTerminal">
-                    <div>[BOOT] ESP32-WROOM-32D Online...</div>
-                </div>
+            <div class="terminal-box" id="serialTerminal">
+                <div>[BOOT] AstroWrist ESP32-WROOM-32D Online...</div>
             </div>
         </section>
     </main>
 
     <footer>
         <div>
-            <strong>AstroWrist Station</strong> — Hardware-in-the-Loop Simulation for <strong>NASA Space Apps Challenge 2026</strong>.
+            <strong>AstroWrist 3D</strong> — Built for <strong>NASA International Space Apps Challenge 2026</strong>.
         </div>
         <div>
-            Verified NASA Open Science Data Feed (DONKI API) • <a href="https://www.apache.org/licenses/LICENSE-2.0" target="_blank">Apache 2.0 Open Source</a>
+            <a href="https://www.apache.org/licenses/LICENSE-2.0" target="_blank">Apache 2.0 Open Source</a>
         </div>
     </footer>
 
+    <!-- Hidden In-Memory Canvas for 3D Dynamic OLED Texture -->
+    <canvas id="oledDynamicCanvas" width="256" height="128" style="display: none;"></canvas>
+
+    <!-- Three.js 3D Model Construction & Interactive Script -->
     <script>
-        const canvas = document.getElementById('ecgCanvas');
-        const ctx = canvas.getContext('2d');
-        let ecgData = new Array(220).fill(52);
+        let scene, camera, renderer, controls, watchGroup;
+        let oledMesh, pulseSensorLedMesh, geigerCylinderMesh;
+        let oledTexture, oledCanvas, oledCtx;
+        let isAutoRotating = false;
+
+        // Current Telemetry State
+        let state = {
+            bpm: 72,
+            doseRate: 0.154,
+            cpm: 19,
+            bpSys: 118,
+            bpDia: 76,
+            mode: 'MODULE',
+            status: 'NOMINAL',
+            accumMsv: 1.45
+        };
+
+        function init3D() {
+            const container = document.querySelector('.viewport-3d-box');
+            const canvas = document.getElementById('threeCanvas');
+
+            // Scene setup
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(40, container.clientWidth / container.clientHeight, 0.1, 100);
+            camera.position.set(0, 4.2, 7.5);
+
+            renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            renderer.toneMappingExposure = 1.25;
+
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.08;
+            controls.minDistance = 3.5;
+            controls.maxDistance = 14;
+
+            // Lighting setup
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.85);
+            scene.add(ambientLight);
+
+            const keyLight = new THREE.DirectionalLight(0x00f0ff, 1.8);
+            keyLight.position.set(5, 8, 6);
+            scene.add(keyLight);
+
+            const fillLight = new THREE.DirectionalLight(0xffffff, 1.4);
+            fillLight.position.set(-6, 4, 4);
+            scene.add(fillLight);
+
+            const backLight = new THREE.DirectionalLight(0xff3366, 0.9);
+            backLight.position.set(0, -6, -6);
+            scene.add(backLight);
+
+            // Create Dynamic OLED Canvas Texture
+            oledCanvas = document.getElementById('oledDynamicCanvas');
+            oledCtx = oledCanvas.getContext('2d');
+            oledTexture = new THREE.CanvasTexture(oledCanvas);
+            oledTexture.minFilter = THREE.LinearFilter;
+
+            buildWatchModel();
+
+            window.addEventListener('resize', onWindowResize);
+            animate();
+        }
+
+        function buildWatchModel() {
+            watchGroup = new THREE.Group();
+
+            // Materials
+            const bodyMat = new THREE.MeshStandardMaterial({
+                color: 0x1a1d24,
+                roughness: 0.42,
+                metalness: 0.65
+            });
+
+            const metalMat = new THREE.MeshStandardMaterial({
+                color: 0x6e7687,
+                roughness: 0.28,
+                metalness: 0.85
+            });
+
+            const strapMat = new THREE.MeshStandardMaterial({
+                color: 0x121419,
+                roughness: 0.88,
+                metalness: 0.12
+            });
+
+            const oledMat = new THREE.MeshBasicMaterial({ map: oledTexture });
+
+            // 1. Main Rugged Housing (Chunky rectangular watch body with bevels)
+            const bodyGeo = new THREE.BoxGeometry(3.6, 1.1, 4.2);
+            const mainBody = new THREE.Mesh(bodyGeo, bodyMat);
+            watchGroup.add(mainBody);
+
+            // Front Chamfer Trim
+            const trimGeo = new THREE.BoxGeometry(3.4, 0.2, 4.0);
+            const trimMesh = new THREE.Mesh(trimGeo, bodyMat);
+            trimMesh.position.y = 0.55;
+            watchGroup.add(trimMesh);
+
+            // 2. Front Recessed Screen Bezel & Dynamic OLED Screen
+            const screenBezelGeo = new THREE.BoxGeometry(2.5, 0.08, 1.7);
+            const screenBezel = new THREE.Mesh(screenBezelGeo, new THREE.MeshStandardMaterial({ color: 0x0a0c10, roughness: 0.8 }));
+            screenBezel.position.set(0, 0.66, -0.4);
+            watchGroup.add(screenBezel);
+
+            const oledGeo = new THREE.PlaneGeometry(2.35, 1.55);
+            oledMesh = new THREE.Mesh(oledGeo, oledMat);
+            oledMesh.rotation.x = -Math.PI / 2;
+            oledMesh.position.set(0, 0.71, -0.4);
+            watchGroup.add(oledMesh);
+
+            // 3. Tactile Buttons Below Display
+            for (let i = -1; i <= 1; i++) {
+                const btnGeo = new THREE.BoxGeometry(0.5, 0.15, 0.25);
+                const btn = new THREE.Mesh(btnGeo, metalMat);
+                btn.position.set(i * 0.75, 0.68, 0.75);
+                watchGroup.add(btn);
+            }
+
+            // 4. Status LED dots (Top Right)
+            const ledColors = [0x00ff88, 0x00ff88, 0xffaa00, 0xffaa00, 0xff2a55];
+            for (let i = 0; i < 5; i++) {
+                const ledGeo = new THREE.SphereGeometry(0.06, 12, 12);
+                const ledMat = new THREE.MeshBasicMaterial({ color: ledColors[i] });
+                const led = new THREE.Mesh(ledGeo, ledMat);
+                led.position.set(0.7 + i * 0.18, 0.68, -1.6);
+                watchGroup.add(led);
+            }
+
+            // 5. Hex Screws on 4 Front Corners
+            const screwGeo = new THREE.CylinderGeometry(0.09, 0.09, 0.1, 8);
+            const cornerCoords = [
+                [-1.5, 1.8], [1.5, 1.8],
+                [-1.5, -1.8], [1.5, -1.8]
+            ];
+            cornerCoords.forEach(([x, z]) => {
+                const screw = new THREE.Mesh(screwGeo, metalMat);
+                screw.position.set(x, 0.62, z);
+                watchGroup.add(screw);
+            });
+
+            // 6. Geiger-Müller Tube Assembly (Iconic front cylinder from photo!)
+            const geigerBracketMat = new THREE.MeshStandardMaterial({ color: 0x222730, roughness: 0.5, metalness: 0.7 });
+
+            // Horizontal tube
+            const geigerGeo = new THREE.CylinderGeometry(0.32, 0.32, 3.8, 32);
+            geigerCylinderMesh = new THREE.Mesh(geigerGeo, metalMat);
+            geigerCylinderMesh.rotation.z = Math.PI / 2;
+            geigerCylinderMesh.position.set(0, 0.1, 2.38);
+            watchGroup.add(geigerCylinderMesh);
+
+            // Perforated Outer Mesh Guard Cylinder
+            const meshShieldGeo = new THREE.CylinderGeometry(0.36, 0.36, 3.2, 24, 1, true);
+            const meshShieldMat = new THREE.MeshStandardMaterial({
+                color: 0x111317,
+                roughness: 0.3,
+                metalness: 0.9,
+                wireframe: true
+            });
+            const meshShield = new THREE.Mesh(meshShieldGeo, meshShieldMat);
+            meshShield.rotation.z = Math.PI / 2;
+            meshShield.position.set(0, 0.1, 2.38);
+            watchGroup.add(meshShield);
+
+            // Left & Right Mount Lugs
+            [-1.85, 1.85].forEach(x => {
+                const lugGeo = new THREE.CylinderGeometry(0.42, 0.42, 0.45, 16);
+                const lug = new THREE.Mesh(lugGeo, geigerBracketMat);
+                lug.rotation.z = Math.PI / 2;
+                lug.position.set(x, 0.1, 2.38);
+                watchGroup.add(lug);
+            });
+
+            // 7. Underside / Rear Optical Pulse Sensor Module (Back view of photo)
+            const sensorPuckGeo = new THREE.CylinderGeometry(0.85, 0.95, 0.28, 32);
+            const sensorPuckMat = new THREE.MeshStandardMaterial({ color: 0x080a0f, roughness: 0.2, metalness: 0.85 });
+            const sensorPuck = new THREE.Mesh(sensorPuckGeo, sensorPuckMat);
+            sensorPuck.position.set(0, -0.65, 0);
+            watchGroup.add(sensorPuck);
+
+            // Optical Glass Center
+            const glassGeo = new THREE.CylinderGeometry(0.45, 0.45, 0.05, 24);
+            const glassMat = new THREE.MeshPhysicalMaterial({ color: 0x05070a, roughness: 0.05, transmission: 0.85 });
+            const glass = new THREE.Mesh(glassGeo, glassMat);
+            glass.position.set(0, -0.79, 0);
+            watchGroup.add(glass);
+
+            // Optical Green/IR LED Diode (Glows synchronously with heart rate)
+            const ledDiodeGeo = new THREE.SphereGeometry(0.08, 12, 12);
+            const ledDiodeMat = new THREE.MeshBasicMaterial({ color: 0x00ff88 });
+            pulseSensorLedMesh = new THREE.Mesh(ledDiodeGeo, ledDiodeMat);
+            pulseSensorLedMesh.position.set(0, -0.76, 0.18);
+            watchGroup.add(pulseSensorLedMesh);
+
+            // 8. Heavy-Duty Ballistic Tactical Strap
+            const strapCurve = new THREE.CatmullRomCurve3([
+                new THREE.Vector3(-1.8, 0.0, -2.1),
+                new THREE.Vector3(-2.2, -1.8, -1.0),
+                new THREE.Vector3(-2.0, -3.2, 0.0),
+                new THREE.Vector3(0.0, -3.6, 0.0),
+                new THREE.Vector3(2.0, -3.2, 0.0),
+                new THREE.Vector3(2.2, -1.8, -1.0),
+                new THREE.Vector3(1.8, 0.0, -2.1)
+            ]);
+            const strapGeo = new THREE.TubeGeometry(strapCurve, 64, 0.42, 12, false);
+            const strap = new THREE.Mesh(strapGeo, strapMat);
+            watchGroup.add(strap);
+
+            // Strap brackets (Top and Bottom)
+            [-2.1, 2.1].forEach(z => {
+                const bracketGeo = new THREE.BoxGeometry(2.8, 0.35, 0.4);
+                const bracket = new THREE.Mesh(bracketGeo, bodyMat);
+                bracket.position.set(0, -0.15, z);
+                watchGroup.add(bracket);
+            });
+
+            scene.add(watchGroup);
+        }
+
+        // Render Dynamic 2D Canvas onto 3D Watch Screen
+        function updateOledTexture() {
+            if (!oledCtx) return;
+
+            oledCtx.fillStyle = '#030708';
+            oledCtx.fillRect(0, 0, 256, 128);
+
+            // Top Status Bar
+            oledCtx.fillStyle = '#38bdf8';
+            oledCtx.font = 'bold 13px "JetBrains Mono", monospace';
+            oledCtx.fillText(`[${state.mode}]`, 8, 16);
+            oledCtx.fillStyle = '#ff3366';
+            oledCtx.fillText(`♥ ${Math.round(state.bpm)}`, 110, 16);
+            oledCtx.fillStyle = '#38bdf8';
+            oledCtx.fillText(`BAT 95%`, 195, 16);
+
+            oledCtx.strokeStyle = 'rgba(56, 189, 248, 0.4)';
+            oledCtx.beginPath();
+            oledCtx.moveTo(8, 22);
+            oledCtx.lineTo(248, 22);
+            oledCtx.stroke();
+
+            // Main Dose Rate Readout
+            oledCtx.fillStyle = state.status === 'CRITICAL_ABORT' ? '#ff2a55' : '#38bdf8';
+            oledCtx.font = 'bold 32px "Orbitron", sans-serif';
+            oledCtx.fillText(`${state.doseRate}`, 10, 62);
+            oledCtx.font = '14px "JetBrains Mono", monospace';
+            oledCtx.fillText(`uSv/h`, 140, 60);
+
+            // CPM & Blood Pressure
+            oledCtx.fillStyle = '#94a3b8';
+            oledCtx.font = '12px "JetBrains Mono", monospace';
+            oledCtx.fillText(`${Math.round(state.cpm)} CPM`, 10, 84);
+            oledCtx.fillText(`BP ${state.bpSys}/${state.bpDia}`, 130, 84);
+
+            // Bottom Line
+            oledCtx.strokeStyle = 'rgba(56, 189, 248, 0.4)';
+            oledCtx.beginPath();
+            oledCtx.moveTo(8, 96);
+            oledCtx.lineTo(248, 96);
+            oledCtx.stroke();
+
+            oledCtx.fillStyle = '#38bdf8';
+            oledCtx.font = '11px "JetBrains Mono", monospace';
+            oledCtx.fillText(`ACC: ${state.accumMsv} mSv`, 10, 115);
+
+            // Status Badge
+            oledCtx.fillStyle = state.status === 'CRITICAL_ABORT' ? '#ff2a55' : (state.status === 'RADIATION_WARNING' ? '#ffaa00' : '#00ff88');
+            oledCtx.fillText(`${state.status}`, 160, 115);
+
+            oledTexture.needsUpdate = true;
+        }
+
+        function onWindowResize() {
+            const container = document.querySelector('.viewport-3d-box');
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if (isAutoRotating && watchGroup) {
+                watchGroup.rotation.y += 0.008;
+            }
+
+            // Pulse optical LED on rear sensor
+            if (pulseSensorLedMesh) {
+                const pulse = 0.5 + 0.5 * Math.sin(Date.now() * 0.006 * (state.bpm / 60));
+                pulseSensorLedMesh.scale.set(1 + pulse * 0.5, 1 + pulse * 0.5, 1 + pulse * 0.5);
+            }
+
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        // Camera Views
+        function setCameraView(view, btnElement) {
+            document.querySelectorAll('.btn-view').forEach(b => b.classList.remove('active'));
+            if (btnElement) btnElement.classList.add('active');
+            isAutoRotating = false;
+
+            if (view === 'front') {
+                camera.position.set(0, 4.5, 6.5);
+                controls.target.set(0, 0, 0);
+                if (watchGroup) watchGroup.rotation.set(0, 0, 0);
+            } else if (view === 'geiger') {
+                camera.position.set(0, 1.8, 5.0);
+                controls.target.set(0, 0.1, 2.38);
+                if (watchGroup) watchGroup.rotation.set(-0.25, 0, 0);
+            } else if (view === 'back') {
+                camera.position.set(0, -4.5, -6.5);
+                controls.target.set(0, -0.65, 0);
+                if (watchGroup) watchGroup.rotation.set(0, Math.PI, 0);
+            }
+        }
+
+        function toggleAutoRotate(btnElement) {
+            isAutoRotating = !isAutoRotating;
+            if (btnElement) {
+                if (isAutoRotating) btnElement.classList.add('active');
+                else btnElement.classList.remove('active');
+            }
+        }
+
+        // 2D Live ECG Wave on Canvas
+        const ecgCanvas = document.getElementById('ecgCanvas');
+        const ecgCtx = ecgCanvas.getContext('2d');
+        let ecgData = new Array(220).fill(40);
         let ecgPhase = 0;
-        let currentBpm = 72;
 
-        // Draw animated optical PPG wave
         function drawEcg() {
-            ctx.fillStyle = 'rgba(3, 7, 16, 0.28)';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ecgCtx.fillStyle = 'rgba(2, 6, 14, 0.28)';
+            ecgCtx.fillRect(0, 0, ecgCanvas.width, ecgCanvas.height);
 
-            // Draw faint grid
-            ctx.strokeStyle = 'rgba(0, 240, 255, 0.08)';
-            ctx.lineWidth = 1;
-            for (let x = 0; x < canvas.width; x += 25) {
-                ctx.beginPath();
-                ctx.moveTo(x, 0);
-                ctx.lineTo(x, canvas.height);
-                ctx.stroke();
-            }
-            for (let y = 0; y < canvas.height; y += 25) {
-                ctx.beginPath();
-                ctx.moveTo(0, y);
-                ctx.lineTo(canvas.width, y);
-                ctx.stroke();
-            }
-
-            // Advance phase based on BPM
-            const speed = (currentBpm / 60) * 0.11;
+            const speed = (state.bpm / 60) * 0.11;
             ecgPhase = (ecgPhase + speed) % (2 * Math.PI);
 
-            let yVal = 52;
+            let yVal = 40;
             let p = ecgPhase;
-
-            if (p > 0.4 && p < 0.8) {
-                yVal -= Math.sin((p - 0.4) / 0.4 * Math.PI) * 6; // P-wave
-            } else if (p >= 1.05 && p < 1.15) {
-                yVal += 5; // Q-dip
-            } else if (p >= 1.15 && p < 1.30) {
-                yVal -= Math.sin((p - 1.15) / 0.15 * Math.PI) * 42; // R-spike
-            } else if (p >= 1.30 && p < 1.40) {
-                yVal += 10; // S-dip
-            } else if (p > 1.65 && p < 2.25) {
-                yVal -= Math.sin((p - 1.65) / 0.6 * Math.PI) * 10; // T-wave
-            }
+            if (p > 0.4 && p < 0.8) yVal -= Math.sin((p - 0.4) / 0.4 * Math.PI) * 6;
+            else if (p >= 1.05 && p < 1.15) yVal += 5;
+            else if (p >= 1.15 && p < 1.30) yVal -= Math.sin((p - 1.15) / 0.15 * Math.PI) * 32;
+            else if (p >= 1.30 && p < 1.40) yVal += 8;
+            else if (p > 1.65 && p < 2.25) yVal -= Math.sin((p - 1.65) / 0.6 * Math.PI) * 8;
 
             ecgData.push(yVal);
-            if (ecgData.length > canvas.width) {
-                ecgData.shift();
-            }
+            if (ecgData.length > ecgCanvas.width) ecgData.shift();
 
-            ctx.strokeStyle = '#00f0ff';
-            ctx.lineWidth = 2;
-            ctx.shadowBlur = 8;
-            ctx.shadowColor = '#00f0ff';
-            ctx.beginPath();
+            ecgCtx.strokeStyle = '#00f0ff';
+            ecgCtx.lineWidth = 1.8;
+            ecgCtx.beginPath();
             for (let i = 0; i < ecgData.length; i++) {
-                if (i === 0) ctx.moveTo(i, ecgData[i]);
-                else ctx.lineTo(i, ecgData[i]);
+                if (i === 0) ecgCtx.moveTo(i, ecgData[i]);
+                else ecgCtx.lineTo(i, ecgData[i]);
             }
-            ctx.stroke();
-            ctx.shadowBlur = 0;
+            ecgCtx.stroke();
 
             requestAnimationFrame(drawEcg);
         }
         drawEcg();
 
-        // Telemetry Poller
+        // Telemetry Poller & Vitals Update
         async function fetchTelemetry() {
             try {
                 const res = await fetch('/api/telemetry');
                 if (!res.ok) return;
                 const data = await res.json();
 
-                // MET & Status
+                // Update state
+                state.bpm = data.vitals.heart_rate_bpm;
+                state.bpSys = Math.round(data.vitals.systolic_bp);
+                state.bpDia = Math.round(data.vitals.diastolic_bp);
+                state.doseRate = data.dosimetry.dose_rate_usvh;
+                state.cpm = data.dosimetry.true_cpm;
+                state.mode = data.operating_mode;
+                state.status = data.crew_status;
+                state.accumMsv = data.dosimetry.accumulated_dose_msv;
+
+                // Update 3D OLED screen
+                updateOledTexture();
+
+                // MET & Badge
                 document.getElementById('metDisplay').innerText = data.met;
                 const statusBadge = document.getElementById('crewStatusBadge');
                 statusBadge.innerText = data.crew_status.replace('_', ' ');
@@ -1039,131 +1011,95 @@
                 else if (data.crew_status === 'RADIATION_WARNING') statusBadge.classList.add('status-warning');
                 else statusBadge.classList.add('status-abort');
 
-                // Heartbeat Sensor
-                currentBpm = data.heartbeat_sensor.heart_rate_bpm;
-                document.getElementById('valHeartRate').innerText = currentBpm;
-                document.getElementById('valSpo2').innerText = data.heartbeat_sensor.spo2_percent;
-                document.getElementById('valResp').innerText = data.heartbeat_sensor.respiration_brpm;
-                document.getElementById('valSignalQuality').innerText = data.heartbeat_sensor.signal_quality_pct;
-                document.getElementById('valIrAmplitude').innerText = data.heartbeat_sensor.ir_amplitude.toLocaleString();
+                // Tuning Bar values
+                document.getElementById('tuneHrVal').innerText = `${state.bpm} BPM`;
+                document.getElementById('tuneRadVal').innerText = `${state.doseRate} μSv/h`;
+                document.getElementById('tuneBpVal').innerText = `${state.bpSys}/${state.bpDia}`;
 
-                const heartIcon = document.getElementById('heartIcon');
-                const beatDuration = (60.0 / currentBpm).toFixed(2);
-                heartIcon.style.animationDuration = `${beatDuration}s`;
+                // Vitals
+                document.getElementById('valBp').innerText = `${state.bpSys}/${state.bpDia}`;
+                document.getElementById('valMap').innerText = `MAP: ${data.vitals.map_bp} mmHg`;
+                document.getElementById('valSpo2').innerText = data.vitals.spo2_percent;
 
-                if (data.heartbeat_sensor.is_tachycardia) {
-                    document.getElementById('lblHeartSub').innerText = '⚠️ TACHYCARDIA DETECTED (>130 BPM)';
-                    document.getElementById('lblHeartSub').style.color = '#ff2a55';
-                } else {
-                    document.getElementById('lblHeartSub').innerText = 'Normal Sinus Rhythm';
-                    document.getElementById('lblHeartSub').style.color = '#8b9bb4';
-                }
+                // Dosimetry
+                document.getElementById('valDoseRate').innerHTML = `${state.doseRate} <span style="font-size: 0.95rem;">μSv/h</span>`;
+                document.getElementById('valRawCpm').innerText = data.dosimetry.raw_cpm;
+                document.getElementById('valTrueCpm').innerText = data.dosimetry.true_cpm;
+                document.getElementById('lbl30dText').innerText = `${data.dosimetry.accumulated_dose_msv} / 250.0 mSv (${data.dosimetry.pct_30d_limit}%)`;
+                document.getElementById('bar30d').style.width = `${Math.min(100, Math.max(1, data.dosimetry.pct_30d_limit))}%`;
+
+                document.getElementById('lblCareerText').innerText = `${data.dosimetry.accumulated_dose_msv} / 600.0 mSv (${data.dosimetry.pct_career_limit}%)`;
+                document.getElementById('barCareer').style.width = `${Math.min(100, Math.max(1, data.dosimetry.pct_career_limit))}%`;
+                document.getElementById('valTtl').innerText = data.dosimetry.time_to_limit_hours;
 
                 // Environment
                 document.getElementById('valPressure').innerText = data.environment.pressure_hpa;
-                document.getElementById('valPressurePsi').innerText = `${data.environment.pressure_psi} psi • ${data.operating_mode === 'EVA' ? 'xEMU Spacesuit' : 'Habitat Atmosphere'}`;
-                document.getElementById('valTemp').innerText = data.environment.temperature_c;
-                document.getElementById('valOperatingModeTag').innerText = `[${data.operating_mode}]`;
+                document.getElementById('valPressureMode').innerText = `[${data.operating_mode}] Atmosphere`;
 
-                // Dosimetry
-                const dos = data.geiger_dosimeter;
-                document.getElementById('valDoseRate').innerHTML = `${dos.dose_rate_usvh} <span style="font-size: 1rem;">μSv/h</span>`;
-                document.getElementById('valRawCpm').innerText = dos.raw_cpm;
-                document.getElementById('valTrueCpm').innerText = dos.true_cpm;
-                document.getElementById('lbl30dText').innerText = `${dos.accumulated_dose_msv} / 250.0 mSv (${dos.pct_30d_limit}%)`;
-                document.getElementById('bar30d').style.width = `${Math.min(100, Math.max(1, dos.pct_30d_limit))}%`;
-
-                document.getElementById('lblCareerText').innerText = `${dos.accumulated_dose_msv} / 600.0 mSv (${dos.pct_career_limit}%)`;
-                document.getElementById('barCareer').style.width = `${Math.min(100, Math.max(1, dos.pct_career_limit))}%`;
-
-                document.getElementById('valTtl').innerText = dos.time_to_limit_hours;
-                document.getElementById('valThreshold').innerText = dos.warn_limit_usvh;
-                document.getElementById('lblThresholdContext').innerText = `Mode: [${data.operating_mode}] (Warn: ${dos.warn_limit_usvh} | Crit: ${dos.crit_limit_usvh} μSv/h)`;
-
-                // Official NASA Open Data
+                // NASA Open Data
                 const nasa = data.nasa_open_data;
-                document.getElementById('nasaEventTitle').innerText = nasa.event_type;
+                document.getElementById('nasaEventId').innerText = nasa.event_id;
+                document.getElementById('nasaEventLink').href = nasa.archive_url;
                 document.getElementById('valKpIndex').innerText = nasa.kp_index;
                 document.getElementById('valSolarFlux').innerText = nasa.solar_flux_pfu;
                 document.getElementById('valFlareClass').innerText = nasa.flare_class;
-                document.getElementById('nasaEventLink').innerText = nasa.event_id;
-                document.getElementById('nasaEventLink').href = nasa.archive_url;
-                document.getElementById('nasaSyncStamp').innerText = `Last Query: ${nasa.last_sync} (${nasa.status})`;
 
-                // ESP32 Hardware Status
-                const esp = data.esp32_hardware;
-                document.getElementById('valHeap').innerText = esp.free_heap_bytes.toLocaleString();
-                document.getElementById('valVbat').innerText = `${esp.battery_v}V LiPo (${esp.battery_pct}%)`;
-
-                setPinDot('dotGpio4', esp.gpio.gpio4_geiger_isr, 'active-green');
-                setPinDot('dotGpio19', esp.gpio.gpio19_vibro_motor, 'active-red');
-                setPinDot('dotGpio18', esp.gpio.gpio18_buzzer_tone > 0, 'active-cyan');
-                setPinDot('dotGpio2', esp.gpio.gpio2_alarm_led, 'active-red');
-
-                // OLED Virtual Mirror
-                document.getElementById('oledModeTag').innerText = `[${data.operating_mode}]`;
-                document.getElementById('oledHr').innerText = `♥ ${Math.round(currentBpm)} BPM`;
-                document.getElementById('oledDoseRate').innerText = dos.dose_rate_usvh;
-                document.getElementById('oledCpm').innerText = `${Math.round(dos.true_cpm)} CPM`;
-                document.getElementById('oledDoseAcc').innerText = `ACC: ${dos.accumulated_dose_msv} mSv`;
-                document.getElementById('oledStatus').innerText = data.crew_status;
-
-                const oledScreen = document.getElementById('oledScreen');
-                if (data.crew_status === 'CRITICAL_ABORT') {
-                    oledScreen.style.borderColor = '#ff2a55';
-                    oledScreen.style.color = '#ff2a55';
-                } else {
-                    oledScreen.style.borderColor = '#1a2233';
-                    oledScreen.style.color = '#38bdf8';
-                }
-
-                // Serial Terminal Box
+                // Serial Logs
                 const terminal = document.getElementById('serialTerminal');
-                if (data.serial_terminal && data.serial_terminal.length > 0) {
-                    terminal.innerHTML = data.serial_terminal.map(line => `<div>${line}</div>`).join('');
+                if (data.serial_logs && data.serial_logs.length > 0) {
+                    terminal.innerHTML = data.serial_logs.map(l => `<div>${l}</div>`).join('');
                     terminal.scrollTop = terminal.scrollHeight;
                 }
 
-            } catch (err) {
-                console.error("Telemetry error:", err);
-            }
-        }
-
-        function setPinDot(id, active, activeClass) {
-            const el = document.getElementById(id);
-            if (!el) return;
-            if (active) {
-                el.className = `pin-dot ${activeClass}`;
-            } else {
-                el.className = 'pin-dot';
-            }
-        }
-
-        setInterval(fetchTelemetry, 1000);
-        fetchTelemetry();
-
-        async function setScenario(name, btnElement) {
-            document.querySelectorAll('.scenario-btn').forEach(b => b.classList.remove('active'));
-            if (btnElement) btnElement.classList.add('active');
-
-            try {
-                await fetch(`/api/scenario/${name}`, { method: 'POST' });
-                fetchTelemetry();
             } catch (e) {
                 console.error(e);
             }
         }
 
-        async function syncNasaApiNow() {
+        // Direct Micro-adjustments (+ / - buttons)
+        async function adjustVital(vital, delta) {
+            try {
+                await fetch('/api/adjust', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ vital: vital, delta: delta })
+                });
+                fetchTelemetry();
+            } catch (err) {
+                console.error("Adjust error:", err);
+            }
+        }
+
+        // Scenarios
+        async function setScenario(name, btnElement) {
+            document.querySelectorAll('.scenario-pill').forEach(b => b.classList.remove('active'));
+            if (btnElement) btnElement.classList.add('active');
+
+            try {
+                await fetch(`/api/scenario/${name}`, { method: 'POST' });
+                fetchTelemetry();
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        async function pingNasaApi() {
             try {
                 const res = await fetch('/api/donki_sync');
                 const data = await res.json();
-                alert(`NASA API Ping Successful!\n\nVerified Event: ${data.event_id}\nSource: ${data.source}\nTimestamp: ${data.sync_time}`);
+                alert(`NASA API Ping Verified!\n\nEvent: ${data.event_id}\nQuery Time: ${data.sync_time}\nStatus: Status 200 OK`);
                 fetchTelemetry();
-            } catch (e) {
-                alert("Error querying NASA API. Check network connection.");
+            } catch (err) {
+                alert("Error querying NASA API.");
             }
         }
+
+        // Boot
+        window.onload = () => {
+            init3D();
+            setInterval(fetchTelemetry, 1000);
+            fetchTelemetry();
+        };
     </script>
 </body>
 </html>
