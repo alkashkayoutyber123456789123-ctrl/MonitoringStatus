@@ -10,5 +10,5 @@ try:
         print(f"HeartRate: {bpm} bpm", flush=True)#Import the Heart Beat on a Terminal
         time.sleep(1) #Timing
 
-except KeyboardInterrupt: #CTRL + C for the OFF 
-    print("\nProgramm is OFF.") #Import on a Terminal
+except KeyboardInterrupt: #CTRL + C for the OFF (if programm is running in Terminal VSCode for test)
+    print("\nProgramm is OFF.") #Import on a VSCode Terminal
