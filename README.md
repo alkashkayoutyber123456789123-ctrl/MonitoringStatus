@@ -23,9 +23,11 @@ python app.py
 ```
 > The dashboard will automatically open in your default browser at **`http://127.0.0.1:8000`**.
 
+> **Blood-pressure values are simulated scenario data.** This software prototype has no connected cuff or blood-pressure sensor; the values are not measured from a person and are not for medical use.
+
 ### Interactive Features in the Software Prototype:
 - **Live NASA DONKI Space Weather:** Direct integration with official NASA APIs for Solar Energetic Particle (SEP) storms, Solar Flares, and Geomagnetic ($K_p$) disturbances.
-- **Cardiovascular & Hemodynamics:** Real-time 60fps ECG waveform, Heart Rate (BPM), Arterial Blood Pressure (Systolic / Diastolic mmHg & MAP), Pulse Oximetry ($\text{SpO}_2\%$), and Respiration Rate.
+- **Cardiovascular & Hemodynamics:** Simulated blood pressure (systolic / diastolic mmHg & MAP) with scenario controls, plus Heart Rate (BPM), Pulse Oximetry ($\text{SpO}_2\%$), and Respiration Rate. Blood-pressure values are demonstration data, not sensor measurements.
 - **Radiation Dosimetry (NASA-STD-3001):** True CPM calculated via $190\ \mu\text{s}$ non-paralyzable dead-time recovery physics, dose rate ($\mu\text{Sv/h}$ and $\text{mSv/h}$), 30-Day BFO limit progress bar ($250\text{ mSv}$), and Time-to-Limit (TTL) countdown.
 - **Autonomous EVA Suit Mode:** Detects barometric depressurization below $450\text{ hPa}$ ($4.3\text{ psi}$ NASA xEMU spacesuit) and dynamically tightens radiation alert thresholds.
 - **Interactive Scenarios Bar:** Click between *Nominal*, *EVA Spacewalk*, *Tachycardia Stress*, *NASA DONKI SEP Storm*, and *Critical Abort* with 1 click.
@@ -160,7 +162,7 @@ pip install -r requirements.txt
 # 2. Run the application
 python app.py
 ```
-*Access the interface at `http://127.0.0.1:8000` to interact with live NASA space weather, ECG, blood pressure, and dosimetry.*
+*Access the interface at `http://127.0.0.1:8000` to interact with live NASA space weather, simulated blood-pressure controls, and dosimetry.*
 
 ### Option B: Compiling the ESP32 Physical Wearable Firmware (Edge Hardware Concept)
 ```bash
