@@ -166,7 +166,7 @@
         .scenario-pill:hover { background: rgba(0, 240, 255, 0.15); border-color: var(--accent-cyan); }
         .scenario-pill.active { background: var(--accent-cyan); color: #030712; border-color: var(--accent-cyan); font-weight: 700; }
 
-        .view-tabs { display: flex; gap: 8px; padding: 12px 24px 0; }
+        .view-tabs { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px 24px 0; }
         .view-tab {
             padding: 8px 14px; border: 1px solid var(--panel-border); border-radius: 6px;
             background: var(--panel-bg); color: var(--text-primary); cursor: pointer;
@@ -358,6 +358,8 @@
         canvas#ecgCanvas { width: 100%; height: 80px; display: block; }
 
         .pulse-demo-card { margin: 16px 24px; }
+        .diary-card { margin: 16px 24px; line-height: 1.65; }
+        .diary-card p { color: var(--text-secondary); margin-top: 12px; }
         .pulse-wave-box {
             height: 280px; padding: 8px; background: rgba(2, 6, 14, 0.9);
             border: 1px solid rgba(0, 240, 255, 0.25); border-radius: 8px;
@@ -415,6 +417,7 @@
     <nav class="view-tabs" aria-label="Dashboard views">
         <button class="view-tab active" onclick="showTab('dashboard', this)">Telemetry</button>
         <button class="view-tab" onclick="showTab('pulse', this)">Pulse Wave Demo</button>
+        <button class="view-tab" onclick="showTab('diary', this)">Hackathon Diary</button>
     </nav>
 
     <!-- Tuning & Injection Bar (+ / - Buttons for Vitals) -->
@@ -631,6 +634,17 @@
         <p class="tile-sub">Synthetic waveform driven by the dashboard's demo heart rate. No body sensor is connected; this is not a medical reading.</p>
         <div class="pulse-wave-box"><canvas id="pulseWaveCanvas"></canvas></div>
     </section>
+
+    <article class="card diary-card" id="diaryView" lang="ru" style="display: none;">
+        <div class="card-header">
+            <div class="card-title"><span>Дневник хакатона</span></div>
+            <span class="card-tag">ЛИЧНЫЕ ВПЕЧАТЛЕНИЯ</span>
+        </div>
+        <p>Пошёл на хакатон: посмотреть на балаган, перекусить рыбками и выпить кофе с комочками. Кофе показался таким подозрительным, будто в нём было машинное масло.</p>
+        <p>Потом увидел, как посетителей просили уйти из библиотеки: «Please guys, can you take your items and go to the first floor?» Один участник взял себе еды, ушёл, так и не поев, а еду оставил на стуле.</p>
+        <p>Поговорил с ментором минут шесть — и всё равно ничего не понял. Спросил организаторов, но нормального ответа не получил. Потом Захар сходил в Small и купил рис с мясом. В конце дня я пошёл в туалет.</p>
+        <p><strong>Итог:</strong> весь код и восемь часов жизни ощущаются как один большой балаган, закончившийся в говнище.</p>
+    </article>
 
     <footer>
         <div>
@@ -1032,6 +1046,7 @@
         function showTab(name, button) {
             document.getElementById('dashboardView').style.display = name === 'dashboard' ? '' : 'none';
             document.getElementById('pulseDemoView').style.display = name === 'pulse' ? 'flex' : 'none';
+            document.getElementById('diaryView').style.display = name === 'diary' ? 'flex' : 'none';
             document.querySelectorAll('.view-tab').forEach(tab => tab.classList.remove('active'));
             button.classList.add('active');
         }
