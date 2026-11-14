@@ -527,6 +527,120 @@
             .garage-page, .diary-card, .pulse-demo-card, .swipe-page, .calculator-page, .fishing-page { margin-left: 12px; margin-right: 12px; }
             .swipe-card { height: 58vh; min-height: 320px; }
         }
+
+        /* 2001–2004 personal-site / Windows XP inspired skin */
+        :root {
+            --bg-space: #008080;
+            --panel-bg: #d4d0c8;
+            --panel-border: #315a9a;
+            --accent-cyan: #1459a5;
+            --accent-green: #16852b;
+            --accent-amber: #c67b00;
+            --accent-red: #c43b3b;
+            --text-primary: #151515;
+            --text-secondary: #414141;
+            --oled-bg: #050814;
+            --oled-pixel: #66d9ff;
+            --terminal-bg: #07100a;
+        }
+        html { min-height: 100%; background-color: #008080; background-image: radial-gradient(#168d8d 1px, transparent 1px); background-size: 8px 8px; }
+        body {
+            display: flex;
+            width: min(1260px, calc(100% - 24px));
+            min-width: 320px;
+            margin: 12px auto;
+            padding: 0;
+            background: transparent;
+            color: #151515;
+            font-family: Tahoma, Verdana, Arial, sans-serif;
+            font-size: 13px;
+        }
+        body > header, body > nav, body > .tuning-bar, body > main, body > section, body > footer, body > .retro-welcome {
+            width: 100%;
+            max-width: 1200px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        body > main { margin-top: 10px; margin-bottom: 0; }
+        body > section { margin-top: 12px; margin-bottom: 12px; }
+        body > section.garage-page, body > section.swipe-page, body > section.calculator-page, body > section.fishing-page { margin-left: auto; margin-right: auto; }
+        body > footer { margin-top: 0; margin-bottom: 12px; }
+        body > header {
+            position: relative;
+            top: auto;
+            z-index: 1;
+            padding: 12px 16px;
+            border: 1px solid #153e8c;
+            border-radius: 8px 8px 0 0;
+            background: linear-gradient(180deg, #5d9cec 0%, #2864c2 48%, #17469d 100%);
+            box-shadow: inset 1px 1px #a8d0ff, inset -1px -1px #103879;
+            color: white;
+        }
+        .brand-logo {
+            border: 1px solid #d9ecff;
+            border-radius: 5px;
+            background: linear-gradient(145deg, #d9f0ff, #5598e7 54%, #174aa4);
+            color: #082d67;
+            box-shadow: inset 1px 1px #fff, 1px 2px 3px #102d61;
+            font-family: Tahoma, Verdana, sans-serif;
+        }
+        .brand-titles h1 { font: bold 1.15rem Tahoma, Verdana, sans-serif; letter-spacing: 0; text-transform: none; text-shadow: 1px 1px #163d79; }
+        .brand-titles p { color: #e2eeff; font: 0.75rem Tahoma, Verdana, sans-serif; }
+        .met-badge { border: 1px solid #a7c9fa; border-radius: 4px; background: #e8f1ff; color: #111; font-family: Tahoma, Verdana, sans-serif; }
+        .met-label { color: #353535; }
+        .met-value { color: #124c93; }
+        .status-badge { border-radius: 4px; box-shadow: none; font: bold 0.75rem Tahoma, Verdana, sans-serif; letter-spacing: 0; }
+        .tuning-bar { position: relative; background: #d4d0c8; border: 1px solid #808080; border-top: 0; padding: 8px 12px; }
+        .tuning-group { border: 1px solid #a0a0a0; border-radius: 3px; background: #e7e4dc; }
+        .tuning-lbl { color: #222; font: bold 0.68rem Tahoma, Verdana, sans-serif; }
+        .tuning-val { font: bold 0.85rem Tahoma, Verdana, sans-serif; }
+        .btn-tune, .view-tab, .scenario-pill, .calc-key, .swipe-action, .fishing-action, .fishing-choice {
+            border: 2px outset #fff;
+            border-radius: 3px;
+            background: linear-gradient(#faf9f5, #d6d3ca);
+            color: #111;
+            box-shadow: 1px 1px #777;
+            font-family: Tahoma, Verdana, sans-serif;
+        }
+        .btn-tune { width: 28px; height: 26px; }
+        .btn-tune:hover, .view-tab:hover, .scenario-pill:hover, .calc-key:hover, .swipe-action:hover, .fishing-choice:hover { background: linear-gradient(#fff, #cbdcf6); border-color: #fff; }
+        .btn-tune:active, .view-tab:active, .scenario-pill:active, .calc-key:active, .swipe-action:active, .fishing-choice:active { border-style: inset; box-shadow: none; }
+        .view-tabs { gap: 5px; padding: 8px 10px; border: 1px solid #808080; border-top: 0; background: #d4d0c8; }
+        .view-tab { padding: 7px 12px; color: #111; }
+        .view-tab.active, .scenario-pill.active { border-style: inset; background: linear-gradient(#2f73d1, #1550a7); color: white; }
+        .scenario-pill { padding: 5px 9px; }
+        main { padding: 12px; background: #b9c9df; border: 1px solid #808080; }
+        .card { border: 2px outset #f8f7f2; border-radius: 4px; background: #e7e4dc; color: #151515; box-shadow: 2px 2px #747474; backdrop-filter: none; }
+        .card-header { border-bottom: 1px solid #aaa69b; }
+        .card-title, .card h2, .card h3 { color: #123e7d; font-family: Tahoma, Verdana, sans-serif; letter-spacing: 0; }
+        .card-tag { border: 1px solid #91add4; border-radius: 2px; background: #d9e6f8; color: #173d70; }
+        .garage-hero, .garage-feature, .garage-extra-card, .memorial-card { background: #e7e4dc; }
+        .garage-copy h2 { font-family: Tahoma, Verdana, sans-serif; }
+        .garage-kicker, .fiction-label { color: #174f98 !important; font-family: Tahoma, Verdana, sans-serif; letter-spacing: 0.04em; }
+        .garage-copy p, .garage-feature-copy p, .garage-note, .bio-copy, .memorial-copy, .swipe-help, .swipe-count, .fishing-note, .fishing-status, .fishing-score { color: #333; }
+        .garage-credit a, footer a { color: #003399; text-decoration: underline; }
+        .swipe-card, .fishing-pond { box-shadow: 2px 2px #777; }
+        .calc-display { border: 2px inset #fff; border-radius: 2px; background: #fff; }
+        .calc-value { color: #111; font-family: 'Courier New', monospace; }
+        .calc-key.operator { color: #103f7b; }
+        .calc-key.equals { border: 2px outset #b7d1fa; background: linear-gradient(#74a9f4, #3474cd); color: white; }
+        .retro-welcome { overflow: hidden; margin-top: 8px; border: 1px solid #808080; background: #e7e4dc; color: #082c69; }
+        .retro-marquee { overflow: hidden; padding: 5px 0; white-space: nowrap; font: bold 0.78rem Tahoma, Verdana, sans-serif; }
+        .retro-marquee span { display: inline-block; padding-left: 100%; animation: retro-scroll 24s linear infinite; }
+        @keyframes retro-scroll { to { transform: translateX(-100%); } }
+        .retro-status { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px; padding: 6px 8px; border-top: 1px solid #aaa69b; font-size: 0.7rem; }
+        .retro-stamp { padding: 2px 5px; border: 1px solid #777; background: #faf9f5; font-weight: bold; }
+        footer { display: flex; flex-wrap: wrap; gap: 10px; padding: 10px 12px; border: 1px solid #808080; border-top: 0; background: #d4d0c8; color: #222; }
+        .window-prank { border: 2px outset #fff; border-radius: 3px; background: linear-gradient(#5d9cec, #17469d); color: white; }
+        .window-prank strong, .window-prank small { color: white; }
+        @media (max-width: 700px) {
+            body { width: calc(100% - 12px); margin: 6px auto; }
+            body > header { align-items: flex-start; gap: 10px; flex-wrap: wrap; }
+            body > header > div:last-child { flex-wrap: wrap; gap: 6px !important; }
+            .view-tabs { padding: 6px; }
+            .view-tab { padding: 6px 8px; font-size: 0.76rem; }
+        }
+        @media (prefers-reduced-motion: reduce) { .retro-marquee span { animation: none; padding-left: 8px; } }
     </style>
 </head>
 <body>
@@ -537,13 +651,18 @@
         <small>Шутка — это выдуманное уведомление сайта.</small>
     </aside>
 
+    <div class="retro-welcome">
+        <div class="retro-marquee"><span>★ WELCOME TO NIGHT SHIFT GARAGE ★ YOUR FRIENDLY CORNER OF THE WORLD WIDE WEB ★ SIGN THE GUESTBOOK IN YOUR HEART ★</span></div>
+        <div class="retro-status"><span class="retro-stamp">🚧 UNDER CONSTRUCTION</span><span class="retro-stamp">BEST VIEWED AT 1024 × 768</span><span>Updated: <span id="retroUpdated">15 Nov 2003</span></span></div>
+    </div>
+
     <!-- Header -->
     <header>
         <div class="brand-container">
             <div class="brand-logo">NG</div>
             <div class="brand-titles">
                 <h1>Night Shift Garage</h1>
-                <p>Mark II garage edit · live telemetry dashboard</p>
+                <p>My corner of the Web · Est. 2003</p>
             </div>
         </div>
 
@@ -935,6 +1054,8 @@
         <div>
             <strong>Night Shift Garage</strong> — fan-made design page.
         </div>
+        <div class="retro-stamp">Visits on this device: <span id="visitCounter">00001</span></div>
+        <div class="retro-stamp">Made with HTML &amp; too much coffee · 2003</div>
         <div>
             <a href="https://www.apache.org/licenses/LICENSE-2.0" target="_blank">Apache 2.0 Open Source</a>
         </div>
@@ -2171,6 +2292,14 @@
             scheduleWindowPrank();
         }
         scheduleWindowPrank();
+
+        try {
+            const visitCount = Number(localStorage.getItem('nightShiftLocalVisits') || 0) + 1;
+            localStorage.setItem('nightShiftLocalVisits', String(visitCount));
+            document.getElementById('visitCounter').textContent = String(visitCount).padStart(5, '0');
+        } catch (error) {
+            document.getElementById('visitCounter').textContent = '00001';
+        }
 
         // Boot
         window.onload = () => {
