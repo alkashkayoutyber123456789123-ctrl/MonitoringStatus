@@ -14,3 +14,6 @@ __pycache__/
 
 # Environment / Keys
 .env
+
+# User-provided music file; keep copyrighted audio out of public commits
+static/audio/Nirvana_-_Smells_Like_Teen_Spirit_47829249.mp3

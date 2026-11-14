@@ -460,6 +460,7 @@
                 <div class="met-value" id="metDisplay">+00:00:00</div>
             </div>
             <div class="status-badge status-nominal" id="crewStatusBadge">NOMINAL</div>
+            <button class="view-tab music-button" id="musicButton" onclick="toggleNirvanaPlayback()" aria-label="Play or pause music">Play music</button>
         </div>
     </header>
 
@@ -729,10 +730,7 @@
                     <div class="card-title"><span>Nirvana · Smells Like Teen Spirit</span></div>
                     <span class="card-tag">REPEAT</span>
                 </div>
-                <p class="garage-note">Официальный видеоклип Nirvana будет повторяться. Нажми кнопку, чтобы разрешить воспроизведение со звуком.</p>
-                <button class="view-tab music-button" id="musicButton" onclick="startNirvanaLoop()">Play on repeat</button>
-                <div class="music-player" id="nirvanaPlayer" aria-live="polite"></div>
-                <p class="garage-credit">Источник: <a href="https://www.nirvana.com/videos/" target="_blank" rel="noreferrer">официальная страница Nirvana Videos</a> · <a href="https://www.youtube.com/watch?v=hTWKbfoikeg" target="_blank" rel="noreferrer">официальный ролик на YouTube</a>.</p>
+                <p class="garage-note" id="musicStatus" aria-live="polite">Локальный трек повторяется, пока открыта страница.</p>
             </article>
             <article class="card garage-extra-card">
                 <div class="card-header">
@@ -1155,13 +1153,36 @@
             button.classList.add('active');
         }
 
-        // YouTube supplies the official recording; the browser requires a click before audible playback.
-        function startNirvanaLoop() {
-            const videoId = 'hTWKbfoikeg';
-            const player = document.getElementById('nirvanaPlayer');
-            player.innerHTML = `<iframe title="Nirvana - Smells Like Teen Spirit" src="https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&loop=1&playlist=${videoId}&controls=1" allow="autoplay; encrypted-media; picture-in-picture" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>`;
-            document.getElementById('musicButton').textContent = 'Restart on repeat';
+        const nirvanaAudio = new Audio('/static/audio/Nirvana_-_Smells_Like_Teen_Spirit_47829249.mp3');
+        nirvanaAudio.loop = true;
+        nirvanaAudio.preload = 'auto';
+        nirvanaAudio.addEventListener('error', () => {
+            document.getElementById('musicStatus').textContent = 'MP3 не найден. Проверь файл static/audio/Nirvana_-_Smells_Like_Teen_Spirit_47829249.mp3.';
+        });
+
+        function toggleNirvanaPlayback() {
+            const button = document.getElementById('musicButton');
+            const status = document.getElementById('musicStatus');
+            if (nirvanaAudio.paused) {
+                nirvanaAudio.play().then(() => {
+                    button.textContent = 'Pause music';
+                    status.textContent = 'Музыка играет по кругу.';
+                }).catch(() => {
+                    status.textContent = 'Браузер не разрешил запуск. Нажми «Play music» ещё раз.';
+                });
+            } else {
+                nirvanaAudio.pause();
+                button.textContent = 'Play music';
+                status.textContent = 'Музыка на паузе.';
+            }
         }
+
+        // Try autoplay on every page visit; browser sound policies may require one click.
+        nirvanaAudio.play().then(() => {
+            document.getElementById('musicButton').textContent = 'Pause music';
+        }).catch(() => {
+            document.getElementById('musicStatus').textContent = 'Автозапуск заблокирован браузером. Нажми «Play music».';
+        });
 
         function drawEcg() {
             ecgCtx.fillStyle = 'rgba(2, 6, 14, 0.28)';

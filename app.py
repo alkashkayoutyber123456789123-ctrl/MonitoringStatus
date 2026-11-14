@@ -26,6 +26,7 @@ import requests
 import uvicorn
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 
@@ -40,6 +41,7 @@ app = FastAPI(
     description="Interactive 3D Hardware Telemetry Cockpit & NASA Open Science Feed",
     version="3.0.0"
 )
+app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
 
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
