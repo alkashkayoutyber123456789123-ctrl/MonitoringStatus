@@ -469,10 +469,27 @@
         .memorial-photo { width: 100%; max-height: 360px; object-fit: cover; border-radius: 8px; filter: saturate(0.75); }
         .memorial-copy { color: var(--text-secondary); line-height: 1.8; }
         .memorial-copy h3 { color: var(--text-primary); }
+        .swipe-page { margin: 20px 24px; display: none; flex-direction: column; align-items: center; gap: 16px; }
+        .swipe-page h2 { font-family: 'Orbitron', sans-serif; text-align: center; }
+        .swipe-help, .swipe-count { color: var(--text-secondary); text-align: center; }
+        .swipe-card { position: relative; width: min(100%, 440px); height: min(66vh, 580px); min-height: 360px; overflow: hidden; border: 1px solid var(--panel-border); border-radius: 18px; background: #111; box-shadow: 0 18px 55px #0009; touch-action: pan-y; user-select: none; }
+        .swipe-card img { width: 100%; height: 100%; display: block; object-fit: contain; background: #08090a; pointer-events: none; }
+        .swipe-stamp { position: absolute; top: 24px; padding: 8px 14px; border: 3px solid; border-radius: 8px; font: 800 1.5rem 'Orbitron', sans-serif; opacity: 0; transform: rotate(-12deg); pointer-events: none; }
+        .swipe-stamp.like { left: 20px; color: #65efae; border-color: #65efae; }
+        .swipe-stamp.skip { right: 20px; color: #ff7777; border-color: #ff7777; transform: rotate(12deg); }
+        .swipe-card.show-like .swipe-stamp.like, .swipe-card.show-skip .swipe-stamp.skip { opacity: 1; }
+        .swipe-actions { display: flex; gap: 18px; justify-content: center; }
+        .swipe-action { min-width: 140px; padding: 12px 20px; border: 1px solid var(--panel-border); border-radius: 999px; background: #171819; color: var(--text-primary); font-weight: 700; font-size: 1rem; cursor: pointer; }
+        .swipe-action.skip { color: #ff8a8a; }
+        .swipe-action.like { color: #65efae; }
+        .swipe-action:hover { filter: brightness(1.25); transform: translateY(-1px); }
+        .swipe-done { text-align: center; }
+        .swipe-done button { margin-top: 12px; }
         @media (max-width: 760px) {
             .garage-hero, .garage-grid, .garage-extra, .memorial-card { grid-template-columns: 1fr; }
             .garage-copy { padding: 24px; }
-            .garage-page, .diary-card, .pulse-demo-card { margin-left: 12px; margin-right: 12px; }
+            .garage-page, .diary-card, .pulse-demo-card, .swipe-page { margin-left: 12px; margin-right: 12px; }
+            .swipe-card { height: 58vh; min-height: 320px; }
         }
     </style>
 </head>
@@ -509,6 +526,7 @@
         <button class="view-tab" onclick="showTab('pulse', this)">Pulse Wave Demo</button>
         <button class="view-tab" onclick="showTab('diary', this)">Hackathon Diary</button>
         <button class="view-tab" onclick="showTab('garage', this)">Garage</button>
+        <button class="view-tab" onclick="showTab('swipe', this)">Мем-свайп</button>
     </nav>
 
     <!-- Tuning & Injection Bar (+ / - Buttons for Vitals) -->
@@ -568,6 +586,8 @@
                         <button class="btn-view active" onclick="setCameraView('front', this)">Front HUD</button>
                         <button class="btn-view" onclick="setCameraView('geiger', this)">Geiger Tube</button>
                         <button class="btn-view" onclick="setCameraView('back', this)">Pulse Sensor</button>
+                        <button class="btn-view" onclick="setCameraView('obama_bust', this)">Obama 3D Bust</button>
+                        <button class="btn-view" onclick="setCameraView('obama_prism', this)">Obamium Prism</button>
                         <button class="btn-view" onclick="toggleAutoRotate(this)">360° Orbit</button>
                     </div>
                     <span class="viewport-hint">Drag to Rotate • Scroll to Zoom</span>
@@ -795,6 +815,25 @@
         </div>
     </section>
 
+    <section class="swipe-page" id="swipeView">
+        <h2>Мем-свайп</h2>
+        <p class="swipe-help">Свайпай карточку или используй кнопки. Стрелки ← и → тоже работают.</p>
+        <div class="swipe-card" id="swipeCard">
+            <img id="swipeImage" src="/static/swipe/383a2efb89b5d54e356c3fb7aaba7a02.jpg" alt="Мем-карточка">
+            <span class="swipe-stamp like">LIKE</span>
+            <span class="swipe-stamp skip">SKIP</span>
+        </div>
+        <p class="swipe-count" id="swipeCount" aria-live="polite"></p>
+        <div class="swipe-actions" id="swipeActions">
+            <button type="button" class="swipe-action skip" onclick="voteOnSwipe(false)">← Пропустить</button>
+            <button type="button" class="swipe-action like" onclick="voteOnSwipe(true)">Нравится →</button>
+        </div>
+        <div class="swipe-done" id="swipeDone" hidden>
+            <p id="swipeResult"></p>
+            <button type="button" class="swipe-action like" onclick="restartSwipe()">Начать заново</button>
+        </div>
+    </section>
+
     <footer>
         <div>
             <strong>Night Shift Garage</strong> — fan-made design page.
@@ -809,11 +848,12 @@
 
     <!-- Three.js 3D Model Construction & Interactive Script -->
     <script>
-        // Скрипт рисует часы, получает данные из Python и отправляет обратно нажатия кнопок.
-        let scene, camera, renderer, controls, watchGroup;
+        // Скрипт рисует часы и 3D-модель Обамы, получает данные из Python и отправляет обратно нажатия кнопок.
+        let scene, camera, renderer, controls, watchGroup, obamaBustGroup, obamaPrismGroup;
         let oledMesh, pulseSensorLedMesh, geigerCylinderMesh;
         let oledTexture, oledCanvas, oledCtx;
         let isAutoRotating = false;
+        let active3DModel = 'watch'; // 'watch' | 'obama_bust' | 'obama_prism'
 
         // Current Telemetry State
         let state = {
@@ -872,9 +912,290 @@
             oledTexture.minFilter = THREE.LinearFilter;
 
             buildWatchModel();
+            buildObamaModels();
 
             window.addEventListener('resize', onWindowResize);
             animate();
+        }
+
+        // Создаёт текстуру портрета Обамы (Canvas + подгрузка фото из Wikimedia Commons)
+        function createObamaFaceTexture() {
+            const c = document.createElement('canvas');
+            c.width = 512;
+            c.height = 512;
+            const ctx = c.getContext('2d');
+
+            // Фон-градиент и детализированный стилизованный портрет на случай оффлайна
+            const grad = ctx.createRadialGradient(256, 230, 40, 256, 256, 260);
+            grad.addColorStop(0, '#8d5837');
+            grad.addColorStop(1, '#4a2a18');
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, 512, 512);
+
+            // Волосы и контур причёски
+            ctx.fillStyle = '#1b1918';
+            ctx.beginPath();
+            ctx.arc(256, 155, 150, Math.PI, 0, false);
+            ctx.fill();
+
+            // Брови
+            ctx.strokeStyle = '#1a1412';
+            ctx.lineWidth = 12;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.moveTo(155, 205); ctx.quadraticCurveTo(195, 190, 225, 203);
+            ctx.moveTo(287, 203); ctx.quadraticCurveTo(317, 190, 357, 205);
+            ctx.stroke();
+
+            // Глаза
+            [192, 320].forEach(cx => {
+                ctx.fillStyle = '#f8fafc';
+                ctx.beginPath();
+                ctx.ellipse(cx, 232, 26, 14, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = '#24140e';
+                ctx.beginPath();
+                ctx.arc(cx, 232, 11, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = '#ffffff';
+                ctx.beginPath();
+                ctx.arc(cx - 4, 228, 3.5, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            // Нос и носогубные складки
+            ctx.strokeStyle = '#522f1b';
+            ctx.lineWidth = 6;
+            ctx.beginPath();
+            ctx.moveTo(256, 225);
+            ctx.lineTo(256, 295);
+            ctx.moveTo(234, 298);
+            ctx.quadraticCurveTo(256, 312, 278, 298);
+            ctx.stroke();
+
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.moveTo(212, 295); ctx.quadraticCurveTo(185, 335, 192, 370);
+            ctx.moveTo(300, 295); ctx.quadraticCurveTo(327, 335, 320, 370);
+            ctx.stroke();
+
+            // Улыбка
+            ctx.fillStyle = '#5c2c22';
+            ctx.beginPath();
+            ctx.arc(256, 342, 48, 0.08 * Math.PI, 0.92 * Math.PI, false);
+            ctx.fill();
+
+            ctx.fillStyle = '#f8fafc';
+            ctx.beginPath();
+            ctx.arc(256, 344, 40, 0.12 * Math.PI, 0.88 * Math.PI, false);
+            ctx.fill();
+
+            // Подпись OBAMA
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
+            ctx.fillRect(0, 445, 512, 67);
+            ctx.fillStyle = '#f0c36d';
+            ctx.font = 'bold 36px "Orbitron", sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('BARACK OBAMA', 256, 490);
+
+            const tex = new THREE.CanvasTexture(c);
+
+            // Подгружаем реальный официальный портрет Барака Обамы (Public Domain, Wikimedia)
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+            img.onload = () => {
+                ctx.drawImage(img, 0, 0, 512, 512);
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
+                ctx.fillRect(0, 452, 512, 60);
+                ctx.fillStyle = '#f0c36d';
+                ctx.font = 'bold 34px "Orbitron", sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText('BARACK OBAMA', 256, 493);
+                tex.needsUpdate = true;
+            };
+            img.src = 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8d/President_Barack_Obama.jpg/512px-President_Barack_Obama.jpg';
+
+            return tex;
+        }
+
+        // Собирает две 3D-модели Барака Обамы:
+        // 1) Скульптурный 3D-бюст в президентском костюме (obamaBustGroup)
+        // 2) Мемную 3D-пирамиду Obamium Prism с портретной текстурой (obamaPrismGroup)
+        function buildObamaModels() {
+            const faceTexture = createObamaFaceTexture();
+
+            // --- 1. Скульптурный 3D-бюст Барака Обамы ---
+            obamaBustGroup = new THREE.Group();
+            obamaBustGroup.visible = false;
+
+            const skinMat = new THREE.MeshStandardMaterial({
+                color: 0x8a5434,
+                roughness: 0.48,
+                metalness: 0.08
+            });
+            const hairMat = new THREE.MeshStandardMaterial({
+                color: 0x1c1a19,
+                roughness: 0.85,
+                metalness: 0.05
+            });
+            const suitMat = new THREE.MeshStandardMaterial({
+                color: 0x101829,
+                roughness: 0.55,
+                metalness: 0.15
+            });
+            const shirtMat = new THREE.MeshStandardMaterial({
+                color: 0xf4f6fa,
+                roughness: 0.35
+            });
+            const tieMat = new THREE.MeshStandardMaterial({
+                color: 0xb91c1c,
+                roughness: 0.3,
+                metalness: 0.2
+            });
+            const goldMat = new THREE.MeshStandardMaterial({
+                color: 0xe0a94d,
+                roughness: 0.25,
+                metalness: 0.88
+            });
+
+            // Пьедестал бюста
+            const baseGeo = new THREE.CylinderGeometry(1.75, 2.05, 0.5, 32);
+            const baseMesh = new THREE.Mesh(baseGeo, goldMat);
+            baseMesh.position.set(0, -2.35, 0);
+            obamaBustGroup.add(baseMesh);
+
+            // Плечи и пиджак
+            const torsoGeo = new THREE.CylinderGeometry(1.35, 1.65, 1.9, 32);
+            const torsoMesh = new THREE.Mesh(torsoGeo, suitMat);
+            torsoMesh.scale.set(1.35, 1, 0.72);
+            torsoMesh.position.set(0, -1.2, 0);
+            obamaBustGroup.add(torsoMesh);
+
+            // Белая рубашка и красный галстук
+            const shirtGeo = new THREE.ConeGeometry(0.68, 1.35, 4);
+            const shirtMesh = new THREE.Mesh(shirtGeo, shirtMat);
+            shirtMesh.rotation.x = Math.PI;
+            shirtMesh.rotation.y = Math.PI / 4;
+            shirtMesh.position.set(0, -0.82, 0.66);
+            obamaBustGroup.add(shirtMesh);
+
+            const tieGeo = new THREE.BoxGeometry(0.24, 1.15, 0.12);
+            const tieMesh = new THREE.Mesh(tieGeo, tieMat);
+            tieMesh.position.set(0, -1.0, 0.96);
+            tieMesh.rotation.x = -0.12;
+            obamaBustGroup.add(tieMesh);
+
+            // Значок флага на лацкане
+            const pinGeo = new THREE.BoxGeometry(0.22, 0.14, 0.06);
+            const pinMesh = new THREE.Mesh(pinGeo, goldMat);
+            pinMesh.position.set(-0.68, -0.78, 0.92);
+            obamaBustGroup.add(pinMesh);
+
+            // Шея
+            const neckGeo = new THREE.CylinderGeometry(0.54, 0.64, 0.85, 24);
+            const neckMesh = new THREE.Mesh(neckGeo, skinMat);
+            neckMesh.position.set(0, -0.05, 0);
+            obamaBustGroup.add(neckMesh);
+
+            // Голова (вытянутая сфера с анатомическими пропорциями)
+            const headGroup = new THREE.Group();
+            headGroup.position.set(0, 1.15, 0);
+
+            const craniumGeo = new THREE.SphereGeometry(1.18, 36, 36);
+            const craniumMesh = new THREE.Mesh(craniumGeo, skinMat);
+            craniumMesh.scale.set(0.92, 1.18, 0.98);
+            headGroup.add(craniumMesh);
+
+            // Челюсть и подбородок
+            const jawGeo = new THREE.CylinderGeometry(0.88, 0.56, 0.95, 24);
+            const jawMesh = new THREE.Mesh(jawGeo, skinMat);
+            jawMesh.position.set(0, -0.58, 0.14);
+            jawMesh.scale.set(0.95, 1, 0.88);
+            headGroup.add(jawMesh);
+
+            // Шапка коротких волос с сединой на висках
+            const hairCapGeo = new THREE.SphereGeometry(1.20, 32, 24, 0, Math.PI * 2, 0, Math.PI * 0.56);
+            const hairCapMesh = new THREE.Mesh(hairCapGeo, hairMat);
+            hairCapMesh.scale.set(0.93, 1.16, 1.0);
+            hairCapMesh.position.set(0, 0.08, -0.04);
+            hairCapMesh.rotation.x = -0.18;
+            headGroup.add(hairCapMesh);
+
+            // Характерные уши Барака Обамы
+            [-1.12, 1.12].forEach(x => {
+                const earGeo = new THREE.SphereGeometry(0.34, 20, 20);
+                const earMesh = new THREE.Mesh(earGeo, skinMat);
+                earMesh.scale.set(0.38, 1.05, 0.65);
+                earMesh.position.set(x, -0.02, -0.05);
+                earMesh.rotation.y = x > 0 ? -0.35 : 0.35;
+                headGroup.add(earMesh);
+            });
+
+            // Надбровные дуги и брови
+            [-0.42, 0.42].forEach(x => {
+                const browGeo = new THREE.BoxGeometry(0.42, 0.09, 0.14);
+                const browMesh = new THREE.Mesh(browGeo, hairMat);
+                browMesh.position.set(x, 0.32, 1.04);
+                browMesh.rotation.z = x > 0 ? -0.08 : 0.08;
+                headGroup.add(browMesh);
+
+                // Глазное яблоко и зрачок
+                const eyeWhiteGeo = new THREE.SphereGeometry(0.16, 16, 16);
+                const eyeWhite = new THREE.Mesh(eyeWhiteGeo, shirtMat);
+                eyeWhite.scale.set(1.25, 0.82, 0.6);
+                eyeWhite.position.set(x, 0.12, 1.02);
+                headGroup.add(eyeWhite);
+
+                const pupilGeo = new THREE.SphereGeometry(0.08, 14, 14);
+                const pupilMat = new THREE.MeshBasicMaterial({ color: 0x170f0b });
+                const pupil = new THREE.Mesh(pupilGeo, pupilMat);
+                pupil.position.set(x, 0.12, 1.10);
+                headGroup.add(pupil);
+            });
+
+            // Нос
+            const noseGeo = new THREE.ConeGeometry(0.24, 0.62, 16);
+            const noseMesh = new THREE.Mesh(noseGeo, skinMat);
+            noseMesh.position.set(0, -0.08, 1.16);
+            noseMesh.rotation.x = 0.22;
+            headGroup.add(noseMesh);
+
+            // Улыбка
+            const smileGeo = new THREE.TorusGeometry(0.34, 0.06, 12, 24, Math.PI * 0.78);
+            const smileMesh = new THREE.Mesh(smileGeo, shirtMat);
+            smileMesh.position.set(0, -0.45, 0.94);
+            smileMesh.rotation.x = Math.PI + 0.15;
+            smileMesh.rotation.z = Math.PI * 0.11;
+            headGroup.add(smileMesh);
+
+            obamaBustGroup.add(headGroup);
+            scene.add(obamaBustGroup);
+
+            // --- 2. Легендарная 3D-пирамида Obamium Prism ---
+            obamaPrismGroup = new THREE.Group();
+            obamaPrismGroup.visible = false;
+
+            const prismGeo = new THREE.ConeGeometry(2.35, 3.6, 4);
+            const prismMat = new THREE.MeshStandardMaterial({
+                map: faceTexture,
+                roughness: 0.28,
+                metalness: 0.18
+            });
+            const prismMesh = new THREE.Mesh(prismGeo, prismMat);
+            prismMesh.rotation.y = Math.PI / 4;
+            prismMesh.position.set(0, 0.25, 0);
+            obamaPrismGroup.add(prismMesh);
+
+            // Светящееся золотое кольцо под Obamium-призмой
+            const ringGeo = new THREE.TorusGeometry(2.1, 0.08, 16, 64);
+            const ringMesh = new THREE.Mesh(ringGeo, goldMat);
+            ringMesh.rotation.x = Math.PI / 2;
+            ringMesh.position.set(0, -1.75, 0);
+            obamaPrismGroup.add(ringMesh);
+
+            scene.add(obamaPrismGroup);
         }
 
         // Собирает 3D-часы из простых геометрических деталей.
@@ -1098,8 +1419,20 @@
         function animate() {
             requestAnimationFrame(animate);
 
-            if (isAutoRotating && watchGroup) {
-                watchGroup.rotation.y += 0.008;
+            const t = Date.now() * 0.001;
+            if (isAutoRotating) {
+                if (watchGroup && watchGroup.visible) watchGroup.rotation.y += 0.008;
+                if (obamaBustGroup && obamaBustGroup.visible) obamaBustGroup.rotation.y += 0.012;
+                if (obamaPrismGroup && obamaPrismGroup.visible) obamaPrismGroup.rotation.y += 0.018;
+            } else {
+                if (obamaBustGroup && obamaBustGroup.visible) {
+                    obamaBustGroup.rotation.y = Math.sin(t * 0.9) * 0.35;
+                    obamaBustGroup.position.y = Math.sin(t * 1.8) * 0.08;
+                }
+                if (obamaPrismGroup && obamaPrismGroup.visible) {
+                    obamaPrismGroup.rotation.y += 0.014;
+                    obamaPrismGroup.position.y = Math.sin(t * 2.2) * 0.18;
+                }
             }
 
             // Pulse optical LED on rear sensor
@@ -1112,12 +1445,18 @@
             renderer.render(scene, camera);
         }
 
-        // Camera Views
+        // Camera Views & 3D Model Switcher
         function setCameraView(view, btnElement) {
             document.querySelectorAll('.btn-view').forEach(b => b.classList.remove('active'));
             if (btnElement) btnElement.classList.add('active');
             isAutoRotating = false;
             if (!camera || !controls) return;
+
+            const isObamaBust = (view === 'obama_bust');
+            const isObamaPrism = (view === 'obama_prism');
+            if (watchGroup) watchGroup.visible = (!isObamaBust && !isObamaPrism);
+            if (obamaBustGroup) obamaBustGroup.visible = isObamaBust;
+            if (obamaPrismGroup) obamaPrismGroup.visible = isObamaPrism;
 
             if (view === 'front') {
                 camera.position.set(0, 4.5, 6.5);
@@ -1131,6 +1470,13 @@
                 camera.position.set(0, -4.5, -6.5);
                 controls.target.set(0, -0.65, 0);
                 if (watchGroup) watchGroup.rotation.set(0, Math.PI, 0);
+            } else if (view === 'obama_bust') {
+                camera.position.set(0, 1.2, 6.8);
+                controls.target.set(0, 0.2, 0);
+            } else if (view === 'obama_prism') {
+                camera.position.set(0, 1.8, 6.8);
+                controls.target.set(0, 0, 0);
+                isAutoRotating = true;
             }
         }
 
@@ -1198,9 +1544,82 @@
             document.getElementById('pulseDemoView').style.display = name === 'pulse' ? 'flex' : 'none';
             document.getElementById('diaryView').style.display = name === 'diary' ? 'flex' : 'none';
             document.getElementById('garageView').style.display = name === 'garage' ? 'flex' : 'none';
+            document.getElementById('swipeView').style.display = name === 'swipe' ? 'flex' : 'none';
             document.querySelectorAll('.view-tab').forEach(tab => tab.classList.remove('active'));
             button.classList.add('active');
         }
+
+        const swipeImages = [
+            '/static/swipe/383a2efb89b5d54e356c3fb7aaba7a02.jpg',
+            '/static/swipe/4061405e70f53ecb6c6bced97a430d62.jpg',
+            '/static/swipe/9b2f8543d2b28579cb60821793817b0f.jpg',
+            '/static/swipe/b0b79be4e722a43248a62c0525c6bf4c.jpg',
+            '/static/swipe/b3594fc7a1da6fe4f9df95cbd8b52ff0.jpg',
+            '/static/swipe/bab1aca355665149654935182dab429e.jpg',
+            '/static/swipe/dec954860b83a3a04c33a473b65f5a8e.jpg'
+        ];
+        let swipeIndex = 0;
+        let swipeLikes = 0;
+        let swipeSkips = 0;
+        let swipeBusy = false;
+        let swipeStartX = null;
+
+        function renderSwipeCard() {
+            const card = document.getElementById('swipeCard');
+            const actions = document.getElementById('swipeActions');
+            const done = document.getElementById('swipeDone');
+            if (swipeIndex >= swipeImages.length) {
+                card.hidden = true;
+                actions.hidden = true;
+                done.hidden = false;
+                document.getElementById('swipeResult').textContent = `Готово! Понравилось: ${swipeLikes}, пропущено: ${swipeSkips}.`;
+                document.getElementById('swipeCount').textContent = `Просмотрено ${swipeImages.length} из ${swipeImages.length}`;
+                return;
+            }
+            card.hidden = false;
+            actions.hidden = false;
+            done.hidden = true;
+            card.classList.remove('show-like', 'show-skip');
+            document.getElementById('swipeImage').src = swipeImages[swipeIndex];
+            document.getElementById('swipeCount').textContent = `Карточка ${swipeIndex + 1} из ${swipeImages.length} · Нравится: ${swipeLikes}`;
+        }
+
+        function voteOnSwipe(liked) {
+            if (swipeBusy || swipeIndex >= swipeImages.length) return;
+            swipeBusy = true;
+            const card = document.getElementById('swipeCard');
+            card.classList.add(liked ? 'show-like' : 'show-skip');
+            setTimeout(() => {
+                if (liked) swipeLikes++;
+                else swipeSkips++;
+                swipeIndex++;
+                swipeBusy = false;
+                renderSwipeCard();
+            }, 180);
+        }
+
+        function restartSwipe() {
+            swipeIndex = 0;
+            swipeLikes = 0;
+            swipeSkips = 0;
+            renderSwipeCard();
+        }
+
+        const swipeCardElement = document.getElementById('swipeCard');
+        swipeCardElement.addEventListener('pointerdown', event => { swipeStartX = event.clientX; });
+        swipeCardElement.addEventListener('pointerup', event => {
+            if (swipeStartX === null) return;
+            const distance = event.clientX - swipeStartX;
+            swipeStartX = null;
+            if (Math.abs(distance) > 70) voteOnSwipe(distance > 0);
+        });
+        swipeCardElement.addEventListener('pointercancel', () => { swipeStartX = null; });
+        document.addEventListener('keydown', event => {
+            if (getComputedStyle(document.getElementById('swipeView')).display === 'none') return;
+            if (event.key === 'ArrowLeft') voteOnSwipe(false);
+            if (event.key === 'ArrowRight') voteOnSwipe(true);
+        });
+        renderSwipeCard();
 
         const nirvanaAudio = new Audio('/static/audio/Nirvana_-_Smells_Like_Teen_Spirit_47829249.mp3');
         nirvanaAudio.loop = true;
