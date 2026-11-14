@@ -1,11 +1,39 @@
-# AstroWrist Dosimeter & Biometric Monitor
+# AstroHealth: Astronaut Biodosimetry & Biometric Telemetry Station
 
-**Wearable Astronaut Ionizing Radiation Dosimeter, Barometric EVA Detector & Real-Time Biometric Monitor**  
-*Built on ESP32-WROOM-32D, J305 Geiger-Müller Tube, MAX30102 PPG Sensor, and BMP280 Barometer (PlatformIO / Arduino Framework)*
+**Spaceflight Health Monitoring Software, Ionizing Radiation Dosimeter, Barometric EVA Detector & Hemodynamic Monitor**  
+*Built for NASA International Space Apps Challenge 2026 — Challenge 6: Create Health Monitoring Software for Astronauts on Space Missions*
+
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
+[![NASA Space Apps](https://img.shields.io/badge/NASA_Space_Apps-2026-orange.svg)](https://www.spaceappschallenge.org/)
+[![NASA-STD-3001](https://img.shields.io/badge/Compliance-NASA--STD--3001-green.svg)](https://www.nasa.gov/ochmo/health-and-medical-policy-and-standards/nasa-std-3001-technical-briefs/)
+[![NASA DONKI](https://img.shields.io/badge/Data_Feed-NASA_DONKI_API-red.svg)](https://api.nasa.gov/)
 
 ---
 
-## 1. Project Overview & Hardware Architecture
+## 🚀 Quick Start for Judges (No Hardware Required)
+
+You do **NOT** need any physical microcontrollers, sensors, or breadboards to run and evaluate this project. The system includes an interactive Mission Control Medical Telemetry Web Application (`app.py`):
+
+```bash
+# 1. Install dependencies
+pip install -r requirements.txt
+
+# 2. Launch the AstroHealth Web Telemetry Dashboard
+python app.py
+```
+> The dashboard will automatically open in your default browser at **`http://127.0.0.1:8000`**.
+
+### Interactive Features in the Software Prototype:
+- **Live NASA DONKI Space Weather:** Direct integration with official NASA APIs for Solar Energetic Particle (SEP) storms, Solar Flares, and Geomagnetic ($K_p$) disturbances.
+- **Cardiovascular & Hemodynamics:** Real-time 60fps ECG waveform, Heart Rate (BPM), Arterial Blood Pressure (Systolic / Diastolic mmHg & MAP), Pulse Oximetry ($\text{SpO}_2\%$), and Respiration Rate.
+- **Radiation Dosimetry (NASA-STD-3001):** True CPM calculated via $190\ \mu\text{s}$ non-paralyzable dead-time recovery physics, dose rate ($\mu\text{Sv/h}$ and $\text{mSv/h}$), 30-Day BFO limit progress bar ($250\text{ mSv}$), and Time-to-Limit (TTL) countdown.
+- **Autonomous EVA Suit Mode:** Detects barometric depressurization below $450\text{ hPa}$ ($4.3\text{ psi}$ NASA xEMU spacesuit) and dynamically tightens radiation alert thresholds.
+- **Interactive Scenarios Bar:** Click between *Nominal*, *EVA Spacewalk*, *Tachycardia Stress*, *NASA DONKI SEP Storm*, and *Critical Abort* with 1 click.
+- **Virtual AstroWrist HUD:** Pixel-identical software emulation of the $128\times64$ OLED astronaut wrist unit.
+
+---
+
+## 1. Project Overview & Multi-Modal Architecture
 
 **AstroWrist Dosimeter & Biometric Monitor** is a standalone wearable hardware instrument designed for astronauts operating aboard orbital habitats (such as the ISS or Gateway) and during Extravehicular Activities (EVA). Unlike passive thermoluminescent dosimeters (TLDs) that can only be analyzed post-flight, **AstroWrist** continuously fuses real-time ionizing radiation dosimetry with wrist-worn cardiovascular photoplethysmography (PPG), suit/cabin barometric telemetry, and spacecraft space-weather uplinks from the **NASA DONKI API**.
 
@@ -106,38 +134,38 @@ $$T_{\text{limit (hours)}} = \frac{250.0\text{ mSv} - D_{\text{acc}}}{\dot{H}_{\
 ## 4. Repository Structure & Build Instructions
 
 ```text
-AstroWrist-Dosimeter/
-├── platformio.ini                  # PlatformIO build configuration & library dependencies
-├── requirements.txt                # Python dependencies for NASA DONKI Serial Uplink
-├── README.md                       # English documentation & NASA Space Apps attribution
-├── src/
-│   ├── config.h                    # GPIO pinout, NASA-STD-3001 constants, thresholds & enums
-│   ├── geiger_counter.h            # GeigerCounter class (IRAM ISR, 12x5s ring buffer, dead-time math)
-│   ├── biodosimetry_health.h       # HealthMonitor class (MAX30102 BPM/SpO2, BMP280 Auto-EVA, FSM)
-│   ├── wrist_display_ui.h          # WristDisplay class (SSD1306 128x64 OLED HUD & inverse blink)
-│   └── main.cpp                    # NVS persistence, UART JSON uplink receiver & 1 Hz telemetry
-└── nasa_uplink/
-    └── nasa_donki_serial.py        # Live NASA DONKI API (SEP/GST/FLR) spacecraft serial bridge
+AstroHealth-Telemetry/
+├── app.py                          # NASA Web Dashboard & Mission Cockpit (FastAPI / HTML5 Canvas)
+├── templates/
+│   └── index.html                  # Responsive Mission Control UI with 60fps ECG & Virtual Wrist HUD
+├── requirements.txt                # Python dependencies (fastapi, uvicorn, requests, jinja2)
+├── LICENSE                         # Official Apache 2.0 Open Source License
+├── README.md                       # Comprehensive English documentation & NASA attribution
+├── nasa_uplink/
+│   ├── nasa_donki_serial.py        # Live NASA DONKI API (SEP/GST/FLR) query engine & SQLite mirror
+│   └── nasa_donki_events.db        # Pre-seeded NASA Solar Cycle 25 verified reference storms
+└── src/                            # Optional Embedded Edge Hardware Firmware (ESP32-WROOM-32D)
+    ├── config.h                    # Pinouts, NASA-STD-3001 constants & medical thresholds
+    ├── geiger_counter.h            # 12x5s sliding window ring buffer & 190 us dead-time math
+    ├── biodosimetry_health.h       # Optical PPG vitals, BMP280 auto-EVA detection (<450 hPa)
+    ├── wrist_display_ui.h          # SSD1306 128x64 OLED graphics driver & critical inverse flashing
+    └── main.cpp                    # NVS persistence, UART JSON bridge & 1 Hz telemetry
 ```
 
-### Compiling the Firmware (PlatformIO)
+### Option A: Running the Interactive Web Application (Primary Software Submission)
 ```bash
-# Compile firmware for ESP32 (esp32dev)
-pio run
-
-# Upload firmware and open 115200 baud Serial telemetry monitor
-pio run --target upload --target monitor
-```
-
-### Running the NASA DONKI Spacecraft Uplink Script
-```bash
+# 1. Install dependencies
 pip install -r requirements.txt
 
-# Query live NASA DONKI SEP & GST APIs and send JSON packet to ESP32 (or dry-run if unplugged)
-python nasa_uplink/nasa_donki_serial.py --once
+# 2. Run the application
+python app.py
+```
+*Access the interface at `http://127.0.0.1:8000` to interact with live NASA space weather, ECG, blood pressure, and dosimetry.*
 
-# Simulate an incoming Solar Energetic Particle (SEP) proton storm alert over Serial
-python nasa_uplink/nasa_donki_serial.py --once --simulate-storm
+### Option B: Compiling the ESP32 Physical Wearable Firmware (Edge Hardware Concept)
+```bash
+# Compile and flash via PlatformIO (if hardware is present)
+pio run --target upload --target monitor
 ```
 
 ---
