@@ -28,6 +28,7 @@ python app.py
 ### Interactive Features in the Software Prototype:
 - **Live NASA DONKI Space Weather:** Direct integration with official NASA APIs for Solar Energetic Particle (SEP) storms, Solar Flares, and Geomagnetic ($K_p$) disturbances.
 - **Cardiovascular & Hemodynamics:** Simulated blood pressure (systolic / diastolic mmHg & MAP) with scenario controls, plus Heart Rate (BPM), Pulse Oximetry ($\text{SpO}_2\%$), and Respiration Rate. Blood-pressure values are demonstration data, not sensor measurements.
+- **Pulse Wave Demo tab:** Shows a synthetic pulse-shaped waveform that follows the demo heart rate. It is not a body sensor reading.
 - **Radiation Dosimetry (NASA-STD-3001):** True CPM calculated via $190\ \mu\text{s}$ non-paralyzable dead-time recovery physics, dose rate ($\mu\text{Sv/h}$ and $\text{mSv/h}$), 30-Day BFO limit progress bar ($250\text{ mSv}$), and Time-to-Limit (TTL) countdown.
 - **Autonomous EVA Suit Mode:** Detects barometric depressurization below $450\text{ hPa}$ ($4.3\text{ psi}$ NASA xEMU spacesuit) and dynamically tightens radiation alert thresholds.
 - **Interactive Scenarios Bar:** Click between *Nominal*, *EVA Spacewalk*, *Tachycardia Stress*, *NASA DONKI SEP Storm*, and *Critical Abort* with 1 click.

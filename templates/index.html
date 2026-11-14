@@ -166,6 +166,13 @@
         .scenario-pill:hover { background: rgba(0, 240, 255, 0.15); border-color: var(--accent-cyan); }
         .scenario-pill.active { background: var(--accent-cyan); color: #030712; border-color: var(--accent-cyan); font-weight: 700; }
 
+        .view-tabs { display: flex; gap: 8px; padding: 12px 24px 0; }
+        .view-tab {
+            padding: 8px 14px; border: 1px solid var(--panel-border); border-radius: 6px;
+            background: var(--panel-bg); color: var(--text-primary); cursor: pointer;
+        }
+        .view-tab.active { color: #030712; background: var(--accent-cyan); border-color: var(--accent-cyan); }
+
         /* Main Cockpit Layout */
         main {
             padding: 16px 24px;
@@ -350,6 +357,13 @@
         }
         canvas#ecgCanvas { width: 100%; height: 80px; display: block; }
 
+        .pulse-demo-card { margin: 16px 24px; }
+        .pulse-wave-box {
+            height: 280px; padding: 8px; background: rgba(2, 6, 14, 0.9);
+            border: 1px solid rgba(0, 240, 255, 0.25); border-radius: 8px;
+        }
+        #pulseWaveCanvas { width: 100%; height: 100%; display: block; }
+
         /* Serial Terminal */
         .terminal-box {
             background: var(--terminal-bg);
@@ -398,6 +412,11 @@
         </div>
     </header>
 
+    <nav class="view-tabs" aria-label="Dashboard views">
+        <button class="view-tab active" onclick="showTab('dashboard', this)">Telemetry</button>
+        <button class="view-tab" onclick="showTab('pulse', this)">Pulse Wave Demo</button>
+    </nav>
+
     <!-- Tuning & Injection Bar (+ / - Buttons for Vitals) -->
     <div class="tuning-bar">
         <!-- Heart Rate Adjust -->
@@ -436,7 +455,7 @@
     </div>
 
     <!-- Main Content -->
-    <main>
+    <main id="dashboardView">
         <!-- Column 1: 3D Interactive Astronaut Wearable -->
         <section class="card">
             <div class="card-header">
@@ -603,6 +622,15 @@
             </div>
         </section>
     </main>
+
+    <section class="card pulse-demo-card" id="pulseDemoView" style="display: none;">
+        <div class="card-header">
+            <div class="card-title"><span>Peripheral Pulse Wave · Demo</span></div>
+            <span class="card-tag" id="pulseDemoBpm">72 BPM</span>
+        </div>
+        <p class="tile-sub">Synthetic waveform driven by the dashboard's demo heart rate. No body sensor is connected; this is not a medical reading.</p>
+        <div class="pulse-wave-box"><canvas id="pulseWaveCanvas"></canvas></div>
+    </section>
 
     <footer>
         <div>
@@ -956,6 +984,58 @@
         let ecgData = new Array(220).fill(40);
         let ecgPhase = 0;
 
+        // Пульсовая волна рисуется программно, используя текущий демо-пульс.
+        const pulseCanvas = document.getElementById('pulseWaveCanvas');
+        const pulseCtx = pulseCanvas.getContext('2d');
+        function drawPulseWave() {
+            const width = pulseCanvas.clientWidth;
+            const height = pulseCanvas.clientHeight;
+            const scale = window.devicePixelRatio || 1;
+            if (pulseCanvas.width !== width * scale || pulseCanvas.height !== height * scale) {
+                pulseCanvas.width = width * scale;
+                pulseCanvas.height = height * scale;
+            }
+            pulseCtx.setTransform(scale, 0, 0, scale, 0, 0);
+            pulseCtx.fillStyle = '#02060e';
+            pulseCtx.fillRect(0, 0, width, height);
+
+            // Сетка помогает видеть форму сигнала, но не задаёт медицинскую шкалу.
+            pulseCtx.strokeStyle = 'rgba(0, 240, 255, 0.10)';
+            pulseCtx.lineWidth = 1;
+            for (let x = 0; x < width; x += 40) {
+                pulseCtx.beginPath(); pulseCtx.moveTo(x, 0); pulseCtx.lineTo(x, height); pulseCtx.stroke();
+            }
+            for (let y = 0; y < height; y += 40) {
+                pulseCtx.beginPath(); pulseCtx.moveTo(0, y); pulseCtx.lineTo(width, y); pulseCtx.stroke();
+            }
+
+            const now = Date.now() / 1000;
+            const bpm = Math.max(1, state.bpm);
+            const baseline = height * 0.72;
+            pulseCtx.strokeStyle = '#00ff88';
+            pulseCtx.lineWidth = 2;
+            pulseCtx.beginPath();
+            for (let x = 0; x < width; x += 2) {
+                const phase = ((now * bpm / 60 - (x / width) * 3) % 1 + 1) % 1;
+                let pulse = 0;
+                if (phase < 0.10) pulse = phase / 0.10;
+                else if (phase < 0.34) pulse = Math.exp(-(phase - 0.10) * 9);
+                const y = baseline - pulse * height * 0.48;
+                if (x === 0) pulseCtx.moveTo(x, y); else pulseCtx.lineTo(x, y);
+            }
+            pulseCtx.stroke();
+            requestAnimationFrame(drawPulseWave);
+        }
+        drawPulseWave();
+
+        // Переключает основную панель и вкладку с демонстрационной волной.
+        function showTab(name, button) {
+            document.getElementById('dashboardView').style.display = name === 'dashboard' ? '' : 'none';
+            document.getElementById('pulseDemoView').style.display = name === 'pulse' ? 'flex' : 'none';
+            document.querySelectorAll('.view-tab').forEach(tab => tab.classList.remove('active'));
+            button.classList.add('active');
+        }
+
         function drawEcg() {
             ecgCtx.fillStyle = 'rgba(2, 6, 14, 0.28)';
             ecgCtx.fillRect(0, 0, ecgCanvas.width, ecgCanvas.height);
@@ -997,6 +1077,7 @@
 
                 // Update state
                 state.bpm = data.vitals.heart_rate_bpm;
+                document.getElementById('pulseDemoBpm').innerText = `${Math.round(state.bpm)} BPM`;
                 state.bpSys = Math.round(data.vitals.systolic_bp);
                 state.bpDia = Math.round(data.vitals.diastolic_bp);
                 state.doseRate = data.dosimetry.dose_rate_usvh;
