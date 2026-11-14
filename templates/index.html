@@ -485,10 +485,22 @@
         .swipe-action:hover { filter: brightness(1.25); transform: translateY(-1px); }
         .swipe-done { text-align: center; }
         .swipe-done button { margin-top: 12px; }
+        .calculator-page { display: none; justify-content: center; margin: 24px; }
+        .calculator { width: min(100%, 420px); padding: 18px; }
+        .calculator h2 { font: 700 1rem 'Orbitron', sans-serif; }
+        .calc-display { min-height: 92px; padding: 12px; border: 1px solid var(--panel-border); border-radius: 8px; background: #08090a; text-align: right; display: flex; flex-direction: column; justify-content: space-between; overflow: hidden; }
+        .calc-expression { min-height: 1.2em; color: var(--text-secondary); font: 0.8rem 'JetBrains Mono', monospace; }
+        .calc-value { color: var(--text-primary); font: 700 clamp(2rem, 9vw, 3rem) 'JetBrains Mono', monospace; white-space: nowrap; overflow-x: auto; }
+        .calc-keys { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+        .calc-key { min-height: 58px; border: 1px solid var(--panel-border); border-radius: 8px; background: rgba(255,255,255,0.06); color: var(--text-primary); font: 600 1.2rem 'JetBrains Mono', monospace; cursor: pointer; }
+        .calc-key:hover { background: rgba(224, 169, 77, 0.2); }
+        .calc-key.operator { color: var(--accent-cyan); }
+        .calc-key.equals { background: var(--accent-cyan); color: #101010; }
+        .calc-key.wide { grid-column: span 2; }
         @media (max-width: 760px) {
             .garage-hero, .garage-grid, .garage-extra, .memorial-card { grid-template-columns: 1fr; }
             .garage-copy { padding: 24px; }
-            .garage-page, .diary-card, .pulse-demo-card, .swipe-page { margin-left: 12px; margin-right: 12px; }
+            .garage-page, .diary-card, .pulse-demo-card, .swipe-page, .calculator-page { margin-left: 12px; margin-right: 12px; }
             .swipe-card { height: 58vh; min-height: 320px; }
         }
     </style>
@@ -527,6 +539,7 @@
         <button class="view-tab" onclick="showTab('diary', this)">Hackathon Diary</button>
         <button class="view-tab" onclick="showTab('garage', this)">Garage</button>
         <button class="view-tab" onclick="showTab('swipe', this)">Мем-свайп</button>
+        <button class="view-tab" onclick="showTab('calculator', this)">Калькулятор</button>
     </nav>
 
     <!-- Tuning & Injection Bar (+ / - Buttons for Vitals) -->
@@ -832,6 +845,38 @@
             <p id="swipeResult"></p>
             <button type="button" class="swipe-action like" onclick="restartSwipe()">Начать заново</button>
         </div>
+    </section>
+
+    <section class="calculator-page" id="calculatorView">
+        <article class="card calculator" aria-label="Калькулятор">
+            <h2>Калькулятор</h2>
+            <div class="calc-display" aria-live="polite">
+                <div class="calc-expression" id="calcExpression"></div>
+                <div class="calc-value" id="calcValue">0</div>
+            </div>
+            <div class="calc-keys">
+                <button class="calc-key operator" onclick="calculatorClear()">AC</button>
+                <button class="calc-key operator" onclick="calculatorDelete()">DEL</button>
+                <button class="calc-key operator" onclick="calculatorPercent()">%</button>
+                <button class="calc-key operator" onclick="calculatorSetOperator('/')">÷</button>
+                <button class="calc-key" onclick="calculatorInput('7')">7</button>
+                <button class="calc-key" onclick="calculatorInput('8')">8</button>
+                <button class="calc-key" onclick="calculatorInput('9')">9</button>
+                <button class="calc-key operator" onclick="calculatorSetOperator('*')">×</button>
+                <button class="calc-key" onclick="calculatorInput('4')">4</button>
+                <button class="calc-key" onclick="calculatorInput('5')">5</button>
+                <button class="calc-key" onclick="calculatorInput('6')">6</button>
+                <button class="calc-key operator" onclick="calculatorSetOperator('-')">−</button>
+                <button class="calc-key" onclick="calculatorInput('1')">1</button>
+                <button class="calc-key" onclick="calculatorInput('2')">2</button>
+                <button class="calc-key" onclick="calculatorInput('3')">3</button>
+                <button class="calc-key operator" onclick="calculatorSetOperator('+')">+</button>
+                <button class="calc-key operator" onclick="calculatorToggleSign()">±</button>
+                <button class="calc-key" onclick="calculatorInput('0')">0</button>
+                <button class="calc-key" onclick="calculatorInput('.')">,</button>
+                <button class="calc-key equals" onclick="calculatorEquals()">=</button>
+            </div>
+        </article>
     </section>
 
     <footer>
@@ -1545,9 +1590,135 @@
             document.getElementById('diaryView').style.display = name === 'diary' ? 'flex' : 'none';
             document.getElementById('garageView').style.display = name === 'garage' ? 'flex' : 'none';
             document.getElementById('swipeView').style.display = name === 'swipe' ? 'flex' : 'none';
+            document.getElementById('calculatorView').style.display = name === 'calculator' ? 'flex' : 'none';
             document.querySelectorAll('.view-tab').forEach(tab => tab.classList.remove('active'));
             button.classList.add('active');
         }
+
+        let calculatorCurrent = '0';
+        let calculatorFirst = null;
+        let calculatorOperator = null;
+        let calculatorWaiting = false;
+        let calculatorError = false;
+        let calculatorExpression = '';
+
+        function calculatorFormat(value) {
+            if (!Number.isFinite(value)) return 'Ошибка';
+            return String(Number(value.toPrecision(12))).replace('.', ',');
+        }
+
+        function calculatorRender() {
+            document.getElementById('calcExpression').textContent = calculatorExpression;
+            document.getElementById('calcValue').textContent = calculatorError ? 'Ошибка' : calculatorCurrent.replace('.', ',');
+        }
+
+        function calculatorClear() {
+            calculatorCurrent = '0';
+            calculatorFirst = null;
+            calculatorOperator = null;
+            calculatorWaiting = false;
+            calculatorError = false;
+            calculatorExpression = '';
+            calculatorRender();
+        }
+
+        function calculatorInput(character) {
+            if (calculatorError) calculatorClear();
+            if (calculatorWaiting) {
+                calculatorCurrent = character === '.' ? '0.' : character;
+                calculatorWaiting = false;
+            } else if (character === '.') {
+                if (!calculatorCurrent.includes('.')) calculatorCurrent += '.';
+            } else {
+                calculatorCurrent = calculatorCurrent === '0' ? character : calculatorCurrent + character;
+            }
+            calculatorExpression = '';
+            calculatorRender();
+        }
+
+        function calculatorApply(left, right, operator) {
+            if (operator === '+') return left + right;
+            if (operator === '-') return left - right;
+            if (operator === '*') return left * right;
+            if (operator === '/') return right === 0 ? NaN : left / right;
+            return right;
+        }
+
+        function calculatorSetOperator(operator) {
+            if (calculatorError) return;
+            let value = Number(calculatorCurrent);
+            if (calculatorFirst !== null && calculatorOperator && !calculatorWaiting) {
+                value = calculatorApply(calculatorFirst, value, calculatorOperator);
+                if (!Number.isFinite(value)) {
+                    calculatorError = true;
+                    calculatorCurrent = '0';
+                    calculatorExpression = 'Деление на ноль';
+                    calculatorRender();
+                    return;
+                }
+                calculatorCurrent = String(Number(value.toPrecision(12)));
+            }
+            calculatorFirst = value;
+            calculatorOperator = operator;
+            calculatorWaiting = true;
+            const signs = { '+': '+', '-': '−', '*': '×', '/': '÷' };
+            calculatorExpression = `${calculatorFormat(value)} ${signs[operator]}`;
+            calculatorRender();
+        }
+
+        function calculatorEquals() {
+            if (calculatorError || calculatorFirst === null || !calculatorOperator) return;
+            const second = Number(calculatorCurrent);
+            const signs = { '+': '+', '-': '−', '*': '×', '/': '÷' };
+            const result = calculatorApply(calculatorFirst, second, calculatorOperator);
+            calculatorExpression = `${calculatorFormat(calculatorFirst)} ${signs[calculatorOperator]} ${calculatorFormat(second)} =`;
+            if (!Number.isFinite(result)) {
+                calculatorError = true;
+                calculatorCurrent = '0';
+            } else {
+                calculatorCurrent = String(Number(result.toPrecision(12)));
+            }
+            calculatorFirst = null;
+            calculatorOperator = null;
+            calculatorWaiting = true;
+            calculatorRender();
+        }
+
+        function calculatorDelete() {
+            if (calculatorError) return calculatorClear();
+            if (calculatorWaiting) return;
+            calculatorCurrent = calculatorCurrent.length > 1 ? calculatorCurrent.slice(0, -1) : '0';
+            if (calculatorCurrent === '-' || calculatorCurrent === '') calculatorCurrent = '0';
+            calculatorExpression = '';
+            calculatorRender();
+        }
+
+        function calculatorPercent() {
+            if (calculatorError) return;
+            calculatorCurrent = String(Number(calculatorCurrent) / 100);
+            calculatorWaiting = false;
+            calculatorRender();
+        }
+
+        function calculatorToggleSign() {
+            if (calculatorError || Number(calculatorCurrent) === 0) return;
+            calculatorCurrent = String(-Number(calculatorCurrent));
+            calculatorRender();
+        }
+
+        document.addEventListener('keydown', event => {
+            if (getComputedStyle(document.getElementById('calculatorView')).display === 'none') return;
+            if (/^[0-9]$/.test(event.key)) calculatorInput(event.key);
+            else if (event.key === '.' || event.key === ',') calculatorInput('.');
+            else if (['+', '-', '*', '/'].includes(event.key)) calculatorSetOperator(event.key);
+            else if (event.key === 'Enter' || event.key === '=') calculatorEquals();
+            else if (event.key === 'Backspace') calculatorDelete();
+            else if (event.key === 'Escape') calculatorClear();
+            else if (event.key === '%') calculatorPercent();
+            else return;
+            event.preventDefault();
+        });
+        calculatorRender();
 
         const swipeImages = [
             '/static/swipe/383a2efb89b5d54e356c3fb7aaba7a02.jpg',
