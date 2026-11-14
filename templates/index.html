@@ -518,6 +518,8 @@
         .fishing-choice:hover, .fishing-action:not(:disabled):hover { filter: brightness(1.15); }
         .fishing-catch { width: 100%; padding: 16px; border: 1px solid var(--panel-border); border-radius: 12px; background: rgba(255,255,255,0.04); }
         .fishing-avatar { font-size: 3.4rem; margin-bottom: 8px; }
+        .fishing-portrait { display: block; width: min(100%, 360px); max-height: 380px; object-fit: cover; margin: 0 auto 14px; border-radius: 12px; }
+        .fishing-portrait[hidden] { display: none; }
         .fishing-catch h3 { margin-bottom: 6px; }
         @media (max-width: 760px) {
             .garage-hero, .garage-grid, .garage-extra, .memorial-card { grid-template-columns: 1fr; }
@@ -905,7 +907,7 @@
     <section class="fishing-page" id="fishingView">
         <article class="card fishing-game">
             <h2>Рыбалка на альтушек</h2>
-            <p class="fishing-note">Шуточная аркада: все персонажи вымышленные и совершеннолетние. Знакомство — только если оба хотят общаться.</p>
+            <p class="fishing-note">Шуточная аркада: игровые истории и реакции вымышлены. Знакомство — только если оба хотят общаться.</p>
             <div class="fishing-pond" id="fishingPond" aria-label="Ночной пруд">
                 <span class="fishing-moon"></span>
                 <span class="fishing-reed">♧</span>
@@ -917,6 +919,7 @@
             <button class="fishing-action" id="fishingAction" type="button" onclick="fishingActionClick()">Забросить</button>
             <article class="fishing-catch" id="fishingCatch" hidden>
                 <div class="fishing-avatar" id="fishingAvatar"></div>
+                <img class="fishing-portrait" id="fishingPortrait" alt="Фото из карточки игры" hidden>
                 <h3 id="fishingCatchTitle"></h3>
                 <p id="fishingCatchText"></p>
             </article>
@@ -1646,6 +1649,7 @@
         }
 
         const fishingCharacters = [
+            { name: 'Гостья у пруда', style: 'альт-образ', icon: '🖤', line: 'Слушает музыку у воды. Можно поздороваться или пожелать хорошего вечера.', photo: '/static/fishing/alt-portrait.jpg' },
             { name: 'Мира', style: 'пост-панк', icon: '🦇', line: 'Читает сборник стихов у воды.' },
             { name: 'Луна', style: 'дарк-академия', icon: '🌙', line: 'Ищет вдохновение для нового рассказа.' },
             { name: 'Ева', style: 'альт-рок', icon: '🎸', line: 'Слушает музыку и любуется отражением луны.' },
@@ -1712,12 +1716,16 @@
                 pond.classList.remove('waiting', 'biting');
                 const caught = document.getElementById('fishingCatch');
                 const icon = document.getElementById('fishingAvatar');
+                const portrait = document.getElementById('fishingPortrait');
                 const title = document.getElementById('fishingCatchTitle');
                 const details = document.getElementById('fishingCatchText');
                 caught.hidden = false;
                 if (Math.random() < 0.42) {
                     fishingCharacter = fishingCharacters[Math.floor(Math.random() * fishingCharacters.length)];
                     icon.textContent = fishingCharacter.icon;
+                    icon.hidden = Boolean(fishingCharacter.photo);
+                    portrait.hidden = !fishingCharacter.photo;
+                    if (fishingCharacter.photo) portrait.src = fishingCharacter.photo;
                     title.textContent = `У берега встретилась ${fishingCharacter.name} · ${fishingCharacter.style}`;
                     details.textContent = `${fishingCharacter.line} Это вымышленный персонаж — можно поздороваться или спокойно дать ей пройти.`;
                     document.getElementById('fishingChoices').hidden = false;
@@ -1733,6 +1741,8 @@
                     { icon: '🦑', name: 'ночной кальмар' },
                     { icon: '🥾', name: 'старый резиновый сапог' }
                 ][Math.floor(Math.random() * 4)];
+                icon.hidden = false;
+                portrait.hidden = true;
                 icon.textContent = fish.icon;
                 title.textContent = `Улов: ${fish.name}!`;
                 details.textContent = fish.name.includes('сапог') ? 'Даже в пруду бывает сюрприз.' : 'Отличная поклёвка!';
