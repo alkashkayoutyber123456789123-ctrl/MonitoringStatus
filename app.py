@@ -7,6 +7,7 @@ Features:
 - Complete 3D interactive model matching physical prototype (rugged housing, J305 Geiger tube, rear optical pulse sensor, tactical strap)
 - Live dynamic OLED screen texture rendered onto the 3D watch in real-time
 - Micro-adjustment buttons (+ / -) for Radiation, Heartbeat, and Blood Pressure
+- Blood pressure values are scenario simulations; no cuff sensor is connected
 - Real-time NASA DONKI API Space Weather live feed & verification
 - UART Serial Telemetry monitor & Mission Scenarios engine
 """
@@ -312,6 +313,8 @@ class AstroWristState:
                 "systolic_bp": round(self.systolic_bp_mmhg, 1),
                 "diastolic_bp": round(self.diastolic_bp_mmhg, 1),
                 "map_bp": round(self.mean_arterial_pressure, 1),
+                "blood_pressure_source": "scenario_simulation",
+                "is_medical_measurement": False,
                 "spo2_percent": round(self.spo2_percent, 1),
                 "respiration_brpm": round(self.respiration_brpm, 1),
                 "ir_amplitude": self.ir_amplitude,
@@ -433,7 +436,11 @@ class AdjustPayload(BaseModel):
 
 @app.get("/", response_class=HTMLResponse)
 async def serve_home(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
+    return templates.TemplateResponse(
+        request=request,
+        name="index.html",
+        context={"request": request},
+    )
 
 
 @app.get("/api/telemetry")
